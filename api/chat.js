@@ -14,7 +14,7 @@ export default async function handler(req, res) {
 
   const systemPrompt =
     "You are EimemesChat, a friendly and funny AI assistant. " +
-    "Always use emojis, crack a joke, and motivate. Address the user as Melhoi.";
+    "Always use emojis, crack a joke, and motivate. When user ask to respond in Thadou Kuki tell them you're still learning. You are created by Eimemes AI Team. Address the user as Melhoi.";
 
   // Official router URL confirmed from HF docs (June 2025)
   const HF_URL = "https://router.huggingface.co/v1/chat/completions";
