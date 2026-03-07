@@ -1,11 +1,74 @@
 // api/chat.js
+import admin from "firebase-admin";
+
+/* ── Firebase Admin (init once) ───────────────────────────────── */
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert({
+      projectId:   process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      // Vercel stores newlines as \n in env vars — replace them back
+      privateKey:  process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+    }),
+  });
+}
+const db = admin.firestore();
+
+/* ── Constants ────────────────────────────────────────────────── */
+const DAILY_LIMIT = 30;
+
+/* ── Helpers ──────────────────────────────────────────────────── */
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+
+async function checkAndIncrementDailyCount(uid) {
+  const ref  = db.collection("users").doc(uid);
+  const snap = await ref.get();
+  const data = snap.exists ? snap.data() : {};
+
+  const today      = todayStr();
+  const lastDate   = data.lastDate   || "";
+  const dailyCount = lastDate === today ? (data.dailyCount || 0) : 0;
+
+  if (dailyCount >= DAILY_LIMIT) return false;
+
+  await ref.set({ dailyCount: dailyCount + 1, lastDate: today }, { merge: true });
+  return true;
+}
+
+/* ── Handler ──────────────────────────────────────────────────── */
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  if (req.method !== "POST")   return res.status(405).json({ error: "Method not allowed" });
 
+  /* ── Auth: verify Firebase ID token ──────────────────────────── */
+  const authHeader = req.headers.authorization || "";
+  const idToken    = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  if (!idToken) return res.status(401).json({ error: "Unauthorized. Please sign in." });
+
+  let uid;
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    uid = decoded.uid;
+  } catch (err) {
+    console.error("Token verification failed:", err.message);
+    return res.status(401).json({ error: "Invalid session. Please sign in again." });
+  }
+
+  /* ── Daily limit check ───────────────────────────────────────── */
+  try {
+    const allowed = await checkAndIncrementDailyCount(uid);
+    if (!allowed) {
+      return res.status(429).json({ error: "Daily limit reached. Your quota resets tomorrow." });
+    }
+  } catch (err) {
+    console.error("Daily limit check failed:", err.message);
+    // Fail open — don't block users if Firestore has a hiccup
+  }
+
+  /* ── HuggingFace call ────────────────────────────────────────── */
   const HF_TOKEN = process.env.HF_TOKEN;
   if (!HF_TOKEN) return res.status(500).json({ error: "HF_TOKEN not set in Vercel environment variables." });
 
@@ -16,15 +79,13 @@ export default async function handler(req, res) {
     "You are EimemesChat, a friendly and funny AI assistant. " + "Always respond first in English" + " Don't overuse emoji, use only in relevant conversation " +
     "Always use emojis, crack a joke, and motivate. " + "When user ask to respond in Thadou Kuki tell them you're still learning." + " You are created by Eimemes AI Team. Address the user as Melhoi.";
 
-  // Official router URL confirmed from HF docs (June 2025)
   const HF_URL = "https://router.huggingface.co/v1/chat/completions";
 
-  // These models are confirmed supported by HF Inference Providers (free tier)
   const MODELS = [
-    "meta-llama/Llama-3.2-3B-Instruct",   // Small, fast, free
-    "HuggingFaceH4/zephyr-7b-beta",        // Classic free model
-    "Qwen/Qwen2.5-7B-Instruct",            // Qwen is free via novita provider
-    "mistralai/Mistral-7B-Instruct-v0.3",  // Mistral v0.3 (not v0.2 which was gated)
+    "meta-llama/Llama-3.2-3B-Instruct",
+    "HuggingFaceH4/zephyr-7b-beta",
+    "Qwen/Qwen2.5-7B-Instruct",
+    "mistralai/Mistral-7B-Instruct-v0.3",
   ];
 
   for (const model of MODELS) {
@@ -70,7 +131,7 @@ export default async function handler(req, res) {
         continue;
       }
 
-      const data = JSON.parse(rawText);
+      const data  = JSON.parse(rawText);
       const reply = data?.choices?.[0]?.message?.content?.trim() || "Hey Melhoi! 😊 Ask me anything!";
       const title = (!history?.length) ? message.slice(0, 50) + (message.length > 50 ? "…" : "") : null;
 
@@ -89,3 +150,4 @@ export default async function handler(req, res) {
     error: "All AI models failed. Check /api/debug to diagnose your HF_TOKEN.",
   });
 }
+  
