@@ -2,7 +2,7 @@
 // Uses HuggingFace Inference API with Meta LLaMA
 
 const HF_API_URL =
-  "https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-8B-Instruct/v1/chat/completions";
+  "https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-8B-Instruct";
 
 const SYSTEM_PROMPT = `You're EimemesChat, you're friendly and interactive. You always joke and motivate. You sometime use emoji for more engaging conversation. You always address user as Melhoi.`;
 
