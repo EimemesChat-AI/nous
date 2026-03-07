@@ -1,4 +1,4 @@
-// api/chat.js - HUGGINGFACE with multiple endpoint attempts
+// api/chat.js - HUGGINGFACE with correct endpoint
 export default async function handler(req, res) {
   // CORS headers
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -35,64 +35,74 @@ export default async function handler(req, res) {
 
     prompt += `${message} [/INST]`;
 
-    // Try multiple possible HuggingFace endpoints
-    const endpoints = [
+    console.log("Sending request to HuggingFace Inference API...");
+
+    // ✅ CORRECT ENDPOINT - using the direct inference endpoint
+    const response = await fetch(
       "https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-8B-Instruct",
-      "https://router.huggingface.co/hf-inference/models/meta-llama/Meta-Llama-3-8B-Instruct",
-      "https://router.huggingface.co/hf-inference/meta-llama/Meta-Llama-3-8B-Instruct",
-      "https://router.huggingface.co/models/meta-llama/Meta-Llama-3-8B-Instruct",
-      "https://router.huggingface.co/v1/models/meta-llama/Meta-Llama-3-8B-Instruct"
-    ];
-
-    let response = null;
-    let lastError = null;
-
-    for (const endpoint of endpoints) {
-      try {
-        console.log(`Trying endpoint: ${endpoint}`);
-        
-        const fetchResponse = await fetch(endpoint, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${HF_TOKEN}`,
-            "Content-Type": "application/json",
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${HF_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          inputs: prompt,
+          parameters: {
+            max_new_tokens: 500,
+            temperature: 0.7,
+            top_p: 0.9,
+            do_sample: true,
           },
-          body: JSON.stringify({
-            inputs: prompt,
-            parameters: {
-              max_new_tokens: 500,
-              temperature: 0.7,
-              top_p: 0.9,
-              do_sample: true,
-            },
-          }),
-        });
-
-        if (fetchResponse.ok) {
-          response = fetchResponse;
-          console.log(`✅ Success with: ${endpoint}`);
-          break;
-        } else {
-          const errorText = await fetchResponse.text();
-          console.log(`❌ ${endpoint} failed: ${fetchResponse.status} - ${errorText}`);
-          lastError = { status: fetchResponse.status, text: errorText };
-        }
-      } catch (e) {
-        console.log(`Error with ${endpoint}:`, e.message);
-        lastError = e;
+        }),
       }
+    );
+
+    // Handle model loading
+    if (response.status === 503) {
+      const errorData = await response.json().catch(() => ({}));
+      console.log("Model loading:", errorData);
+      return res.status(503).json({
+        error: "Model is loading. Please wait 20 seconds and try again.",
+        estimated_time: errorData.estimated_time || 20
+      });
     }
 
-    if (!response) {
-      console.error("All endpoints failed:", lastError);
+    // Handle rate limits
+    if (response.status === 429) {
+      return res.status(429).json({
+        error: "Too many requests. Please wait a moment and try again.",
+      });
+    }
+
+    // Handle unauthorized - token might not have access yet
+    if (response.status === 403 || response.status === 401) {
+      console.error("Authorization error - check token and model access");
       return res.status(502).json({
-        error: "AI service temporarily unavailable. Please try again later."
+        error: "HuggingFace authorization failed. Make sure you've accepted the LLaMA license at: https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct"
+      });
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("HuggingFace API error:", response.status, errorText);
+      
+      // If we get 404, the endpoint might be wrong or model name incorrect
+      if (response.status === 404) {
+        return res.status(502).json({
+          error: "Model endpoint not found. The model name might have changed or your access is still pending."
+        });
+      }
+      
+      return res.status(502).json({
+        error: `AI service error (${response.status}). Please try again.`,
       });
     }
 
     const data = await response.json();
     console.log("HuggingFace response received");
 
+    // Parse response
     let reply = "";
     if (Array.isArray(data)) {
       reply = data[0]?.generated_text || "";
@@ -104,11 +114,13 @@ export default async function handler(req, res) {
       return res.status(502).json({ error: "AI returned empty response" });
     }
 
+    // Extract only the assistant's reply
     let assistantReply = reply;
     if (reply.includes("[/INST]")) {
       assistantReply = reply.split("[/INST]").pop()?.trim() || reply;
     }
 
+    // Generate title for first message
     let title = null;
     if (!history || history.length === 0) {
       title = message.slice(0, 50) + (message.length > 50 ? "…" : "");
@@ -116,7 +128,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       reply: assistantReply,
-      model: "LLaMA-3-8B (HuggingFace)",
+      model: "LLaMA-3-8B",
       ...(title && { title }),
     });
 
