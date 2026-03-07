@@ -1,5 +1,4 @@
-// api/chat.js — Fixed HuggingFace Router integration
-// Correct base URL: https://router.huggingface.co/v1/chat/completions
+// api/chat.js — Uses classic api-inference.huggingface.co (most reliable)
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -12,37 +11,33 @@ export default async function handler(req, res) {
 
   const HF_TOKEN = process.env.HF_TOKEN;
   if (!HF_TOKEN) {
-    console.error("HF_TOKEN environment variable is missing");
-    return res.status(500).json({ error: "Server configuration error: HF_TOKEN not set." });
+    return res.status(500).json({ error: "HF_TOKEN env variable is not set in Vercel." });
   }
 
   const { message, history } = req.body;
   if (!message) return res.status(400).json({ error: "Message required" });
 
-  // ─── THE CORRECT ENDPOINT ─────────────────────────────────────
-  // All models go through this single URL — model is specified in the body.
-  const HF_URL = "https://router.huggingface.co/v1/chat/completions";
-
-  // Free-tier, ungated models — tried in order as fallbacks
-  const MODELS = [
-    "meta-llama/Llama-3.1-8B-Instruct",   // Best quality, widely available
-    "HuggingFaceH4/zephyr-7b-beta",        // Reliable fallback
-    "microsoft/Phi-3-mini-4k-instruct",    // Lightweight fallback
-  ];
-
   const systemPrompt =
     "You are EimemesChat, a friendly and funny AI assistant. " +
-    "Always use emojis, crack a joke when you can, and motivate the user. " +
-    "Always address the user as Melhoi.";
+    "Always use emojis, crack a joke, and motivate. Address the user as Melhoi.";
 
-  for (const model of MODELS) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000); // 30s
+  // ── Strategy 1: New per-model chat completions (api-inference) ──
+  // Works for popular instruction-tuned models, no router needed.
+  const CHAT_MODELS = [
+    "HuggingFaceH4/zephyr-7b-beta",
+    "mistralai/Mistral-7B-Instruct-v0.1",
+    "microsoft/Phi-3-mini-4k-instruct",
+  ];
+
+  for (const model of CHAT_MODELS) {
+    const url = `https://api-inference.huggingface.co/models/${model}/v1/chat/completions`;
 
     try {
-      console.log(`Trying model: ${model}`);
+      console.log(`[Strategy 1] Trying: ${url}`);
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 25000);
 
-      const response = await fetch(HF_URL, {
+      const response = await fetch(url, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${HF_TOKEN}`,
@@ -62,57 +57,134 @@ export default async function handler(req, res) {
         signal: controller.signal,
       });
 
-      clearTimeout(timeout);
+      clearTimeout(timer);
+      const responseText = await response.text();
+      console.log(`[${model}] status=${response.status} body=${responseText.slice(0, 300)}`);
 
       if (response.status === 503) {
-        const body = await response.json().catch(() => ({}));
-        console.warn(`Model loading: ~${body.estimated_time || 25}s`);
+        // Model cold-starting — tell the client to wait
+        let estimated = 20;
+        try { estimated = JSON.parse(responseText).estimated_time || 20; } catch {}
         return res.status(503).json({
-          error: `The AI is warming up ☕ Please wait ~${Math.ceil(body.estimated_time || 25)} seconds and try again.`,
+          error: `AI is warming up ☕ Please wait ~${Math.ceil(estimated)}s and try again.`,
         });
       }
 
-      // Skip gated / unavailable models
-      if (response.status === 403 || response.status === 404 || response.status === 429) {
-        const text = await response.text();
-        console.warn(`Model ${model} returned ${response.status}: ${text} — skipping`);
-        continue;
-      }
-
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`Model ${model} error ${response.status}:`, errorText);
+        console.warn(`[${model}] Non-OK, skipping. Status: ${response.status}`);
         continue;
       }
 
-      const data = await response.json();
-      let reply = data?.choices?.[0]?.message?.content?.trim() || "";
-      if (!reply) reply = "Hey Melhoi! 😊 I'm here — ask me anything!";
+      const data = JSON.parse(responseText);
+      const reply = data?.choices?.[0]?.message?.content?.trim()
+        || "Hey Melhoi! 😊 Ask me anything!";
 
-      let title = null;
-      if (!history || history.length === 0) {
-        title = message.slice(0, 50) + (message.length > 50 ? "…" : "");
-      }
+      const title = (!history?.length)
+        ? message.slice(0, 50) + (message.length > 50 ? "…" : "")
+        : null;
 
-      console.log(`✅ Success with model: ${model}`);
-      return res.status(200).json({
-        reply,
-        model: model.split("/")[1] || model,
-        ...(title && { title }),
-      });
+      console.log(`✅ [Strategy 1] Success: ${model}`);
+      return res.status(200).json({ reply, model: model.split("/")[1], ...(title && { title }) });
 
     } catch (err) {
-      clearTimeout(timeout);
       if (err.name === "AbortError") {
-        console.warn(`Model ${model} timed out — skipping`);
-        continue;
+        console.warn(`[${model}] Timed out, skipping`);
+      } else {
+        console.error(`[${model}] Error:`, err.message);
       }
-      console.error(`Error with model ${model}:`, err);
       continue;
     }
   }
 
+  // ── Strategy 2: Classic text-generation (oldest, most compatible) ──
+  const CLASSIC_MODELS = [
+    { id: "HuggingFaceH4/zephyr-7b-beta",          fmt: "zephyr"  },
+    { id: "tiiuae/falcon-7b-instruct",              fmt: "falcon"  },
+    { id: "google/flan-t5-large",                   fmt: "plain"   },
+  ];
+
+  function buildPrompt(fmt, msg) {
+    if (fmt === "zephyr")
+      return `<|system|>\n${systemPrompt}</s>\n<|user|>\n${msg}</s>\n<|assistant|>\n`;
+    if (fmt === "falcon")
+      return `System: ${systemPrompt}\nUser: ${msg}\nAssistant:`;
+    return `${systemPrompt}\n\nUser: ${msg}\nAssistant:`;
+  }
+
+  for (const { id, fmt } of CLASSIC_MODELS) {
+    const url = `https://api-inference.huggingface.co/models/${id}`;
+    const prompt = buildPrompt(fmt, message);
+
+    try {
+      console.log(`[Strategy 2] Trying: ${url}`);
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 25000);
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${HF_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          inputs: prompt,
+          parameters: {
+            max_new_tokens: 250,
+            temperature: 0.75,
+            return_full_text: false,
+            do_sample: true,
+          },
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timer);
+      const responseText = await response.text();
+      console.log(`[${id}] status=${response.status} body=${responseText.slice(0, 300)}`);
+
+      if (response.status === 503) {
+        let estimated = 20;
+        try { estimated = JSON.parse(responseText).estimated_time || 20; } catch {}
+        return res.status(503).json({
+          error: `AI is warming up ☕ Please wait ~${Math.ceil(estimated)}s and try again.`,
+        });
+      }
+
+      if (!response.ok) {
+        console.warn(`[${id}] Non-OK, skipping. Status: ${response.status}`);
+        continue;
+      }
+
+      const data = JSON.parse(responseText);
+      let reply = "";
+      if (Array.isArray(data)) reply = data[0]?.generated_text || "";
+      else reply = data?.generated_text || "";
+
+      reply = reply.replace(prompt, "").trim();
+      if (!reply) reply = "Hey Melhoi! 😊 Ask me anything!";
+
+      const title = (!history?.length)
+        ? message.slice(0, 50) + (message.length > 50 ? "…" : "")
+        : null;
+
+      console.log(`✅ [Strategy 2] Success: ${id}`);
+      return res.status(200).json({ reply, model: id.split("/")[1], ...(title && { title }) });
+
+    } catch (err) {
+      if (err.name === "AbortError") {
+        console.warn(`[${id}] Timed out, skipping`);
+      } else {
+        console.error(`[${id}] Error:`, err.message);
+      }
+      continue;
+    }
+  }
+
+  // ── All strategies exhausted ────────────────────────────────────
+  console.error("❌ All models failed. Check HF_TOKEN permissions in Vercel env vars.");
   return res.status(502).json({
-    error: "All AI models are currently unavailable. Please check your HF_TOKEN and try again. 🙏",
+    error:
+      "All AI models failed. Please ensure your HF_TOKEN is valid and has 'Make calls to Inference API' permission. 🙏",
   });
 }
+                                                               
