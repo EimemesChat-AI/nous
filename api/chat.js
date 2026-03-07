@@ -1,4 +1,4 @@
-// api/chat.js - OPENROUTER VERSION (100% WORKING)
+// api/chat.js - OPENROUTER VERSION with SECURE environment variable
 export default async function handler(req, res) {
   // CORS headers
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -8,10 +8,15 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  // Your OpenRouter key
-  const OPENROUTER_KEY = "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";
+  // ✅ SECURE: Get key from environment variable (set in Vercel dashboard)
+  const OPENROUTER_KEY = process.env.OPENROUTER_KEY;
   
-  const { message } = req.body;
+  if (!OPENROUTER_KEY) {
+    console.error("OPENROUTER_KEY environment variable is not set");
+    return res.status(500).json({ error: "Server configuration error" });
+  }
+
+  const { message, history } = req.body;
   if (!message) return res.status(400).json({ error: "Message required" });
 
   try {
@@ -52,7 +57,7 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
-    console.log("OpenRouter success:", data);
+    console.log("OpenRouter success");
 
     // Extract the reply
     const reply = data.choices?.[0]?.message?.content;
@@ -61,13 +66,16 @@ export default async function handler(req, res) {
       return res.status(502).json({ error: "AI returned empty response" });
     }
 
-    // Generate title for first message (if needed)
-    const title = message.slice(0, 50) + (message.length > 50 ? "…" : "");
+    // Generate title for first message (if no history)
+    let title = null;
+    if (!history || history.length === 0) {
+      title = message.slice(0, 50) + (message.length > 50 ? "…" : "");
+    }
 
     return res.status(200).json({
       reply: reply,
       model: "Mistral 7B",
-      title: title
+      ...(title && { title })
     });
 
   } catch (error) {
