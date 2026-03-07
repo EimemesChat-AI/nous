@@ -1,4 +1,4 @@
-// api/chat.js - OPENROUTER with correct free model
+// api/chat.js - COMPLETE WORKING VERSION
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -15,50 +15,72 @@ export default async function handler(req, res) {
   const { message, history } = req.body;
   if (!message) return res.status(400).json({ error: "Message required" });
 
-  try {
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENROUTER_KEY}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://eimemeschat-ai-ashy.vercel.app",
-        "X-Title": "EimemesChat AI"
-      },
-      body: JSON.stringify({
-        // ✅ Correct model ID for free tier
-        model: "mistralai/mistral-7b-instruct:free",
-        messages: [
-          {
-            role: "system",
-            content: "You're EimemesChat, friendly and interactive. You always joke and motivate. Use emoji. Address user as Melhoi. Keep responses concise and engaging."
-          },
-          {
-            role: "user",
-            content: message
-          }
-        ],
-        max_tokens: 500,
-        temperature: 0.7
-      })
-    });
+  // List of working free models on OpenRouter
+  const freeModels = [
+    "mistralai/mistral-7b-instruct:free",
+    "google/gemma-2-9b-it:free",
+    "microsoft/phi-3-mini-128k-instruct:free",
+    "meta-llama/llama-3-8b-instruct:free"  // If your LLaMA access is approved
+  ];
 
-    // Handle non-OK responses
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error("OpenRouter error:", response.status, errorData);
+  // Try each model until one works
+  let lastError = null;
+  let response = null;
+  let workingModel = null;
+
+  for (const model of freeModels) {
+    try {
+      console.log(`Trying model: ${model}`);
       
-      // Specific handling for 404 (model not found)
-      if (response.status === 404) {
-        return res.status(502).json({ 
-          error: "AI model temporarily unavailable. Please try again later." 
-        });
-      }
-      
-      return res.status(502).json({ 
-        error: `AI service error (${response.status}). Please try again.` 
+      const fetchResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${OPENROUTER_KEY}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://eimemeschat-ai-ashy.vercel.app",
+          "X-Title": "EimemesChat AI"
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [
+            {
+              role: "system",
+              content: "You're EimemesChat, friendly and interactive. You always joke and motivate. Use emoji. Address user as Melhoi. Keep responses concise and engaging."
+            },
+            {
+              role: "user",
+              content: message
+            }
+          ],
+          max_tokens: 500,
+          temperature: 0.7
+        })
       });
-    }
 
+      if (fetchResponse.ok) {
+        response = fetchResponse;
+        workingModel = model;
+        console.log(`✅ Success with model: ${model}`);
+        break;
+      } else {
+        const errorData = await fetchResponse.json();
+        console.log(`❌ Model ${model} failed:`, errorData.error?.message);
+        lastError = errorData;
+      }
+    } catch (e) {
+      console.log(`Error with ${model}:`, e.message);
+      lastError = e;
+    }
+  }
+
+  if (!response) {
+    console.error("All models failed:", lastError);
+    return res.status(502).json({ 
+      error: "AI service temporarily unavailable. Please try again later." 
+    });
+  }
+
+  try {
     const data = await response.json();
     const reply = data.choices?.[0]?.message?.content;
     
@@ -74,14 +96,12 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       reply: reply,
-      model: "Mistral 7B (free)",
+      model: "EimemesChat AI",
       ...(title && { title })
     });
 
   } catch (error) {
-    console.error("Serverless function error:", error);
-    return res.status(500).json({ 
-      error: "Internal server error: " + error.message 
-    });
+    console.error("Error parsing response:", error);
+    return res.status(500).json({ error: "Failed to parse AI response" });
   }
 }
