@@ -1,9 +1,7 @@
-// api/chat.js — Fixed HuggingFace integration
-// Uses the new HF Inference router with OpenAI-compatible chat format
-// Models are free-tier, ungated, and publicly accessible.
+// api/chat.js — Fixed HuggingFace Router integration
+// Correct base URL: https://router.huggingface.co/v1/chat/completions
 
 export default async function handler(req, res) {
-  // CORS headers
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -21,13 +19,15 @@ export default async function handler(req, res) {
   const { message, history } = req.body;
   if (!message) return res.status(400).json({ error: "Message required" });
 
-  // ─── Model priority list ────────────────────────────────────────
-  // All of these are free-tier, ungated on HuggingFace Inference API.
-  // We try them in order and fall back if one is unavailable.
+  // ─── THE CORRECT ENDPOINT ─────────────────────────────────────
+  // All models go through this single URL — model is specified in the body.
+  const HF_URL = "https://router.huggingface.co/v1/chat/completions";
+
+  // Free-tier, ungated models — tried in order as fallbacks
   const MODELS = [
-    "HuggingFaceH4/zephyr-7b-beta",          // Best quality, free & ungated
-    "mistralai/Mistral-7B-Instruct-v0.1",     // Older Mistral — less gated
-    "google/flan-t5-xxl",                     // Always-on fallback (instruction)
+    "meta-llama/Llama-3.1-8B-Instruct",   // Best quality, widely available
+    "HuggingFaceH4/zephyr-7b-beta",        // Reliable fallback
+    "microsoft/Phi-3-mini-4k-instruct",    // Lightweight fallback
   ];
 
   const systemPrompt =
@@ -35,19 +35,14 @@ export default async function handler(req, res) {
     "Always use emojis, crack a joke when you can, and motivate the user. " +
     "Always address the user as Melhoi.";
 
-  // ─── Try each model in sequence ────────────────────────────────
   for (const model of MODELS) {
-    // Use the new HF Inference Router with OpenAI-compatible format
-    const url = `https://router.huggingface.co/hf-inference/models/${model}/v1/chat/completions`;
-
     const controller = new AbortController();
-    // 30s — HF free tier cold-start can take up to 30s
-    const timeout = setTimeout(() => controller.abort(), 30000);
+    const timeout = setTimeout(() => controller.abort(), 30000); // 30s
 
     try {
       console.log(`Trying model: ${model}`);
 
-      const response = await fetch(url, {
+      const response = await fetch(HF_URL, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${HF_TOKEN}`,
@@ -57,7 +52,6 @@ export default async function handler(req, res) {
           model,
           messages: [
             { role: "system", content: systemPrompt },
-            // Include up to last 6 history turns for context
             ...(Array.isArray(history) ? history.slice(-6) : []),
             { role: "user", content: message },
           ],
@@ -70,25 +64,18 @@ export default async function handler(req, res) {
 
       clearTimeout(timeout);
 
-      // ── Model loading (free tier) — tell the client to retry ──
       if (response.status === 503) {
         const body = await response.json().catch(() => ({}));
-        console.warn(`Model ${model} is loading (~${body.estimated_time || 25}s)`);
-        // Don't try the next model — loading just means "wait"
+        console.warn(`Model loading: ~${body.estimated_time || 25}s`);
         return res.status(503).json({
-          error: `The AI model is warming up. Please wait ~${Math.ceil(body.estimated_time || 25)} seconds and try again. ☕`,
+          error: `The AI is warming up ☕ Please wait ~${Math.ceil(body.estimated_time || 25)} seconds and try again.`,
         });
       }
 
-      // ── Gated / not found — skip to next model ────────────────
-      if (response.status === 403 || response.status === 404) {
-        console.warn(`Model ${model} returned ${response.status} — skipping`);
-        continue;
-      }
-
-      // ── Rate limited ───────────────────────────────────────────
-      if (response.status === 429) {
-        console.warn(`Rate limited on model ${model} — skipping`);
+      // Skip gated / unavailable models
+      if (response.status === 403 || response.status === 404 || response.status === 429) {
+        const text = await response.text();
+        console.warn(`Model ${model} returned ${response.status}: ${text} — skipping`);
         continue;
       }
 
@@ -98,23 +85,16 @@ export default async function handler(req, res) {
         continue;
       }
 
-      // ── Parse successful response ──────────────────────────────
       const data = await response.json();
-      let reply =
-        data?.choices?.[0]?.message?.content ||
-        data?.choices?.[0]?.text ||
-        "";
-
-      reply = reply.trim();
+      let reply = data?.choices?.[0]?.message?.content?.trim() || "";
       if (!reply) reply = "Hey Melhoi! 😊 I'm here — ask me anything!";
 
-      // Generate title from first message
       let title = null;
       if (!history || history.length === 0) {
         title = message.slice(0, 50) + (message.length > 50 ? "…" : "");
       }
 
-      console.log(`✅ Response from ${model}`);
+      console.log(`✅ Success with model: ${model}`);
       return res.status(200).json({
         reply,
         model: model.split("/")[1] || model,
@@ -123,21 +103,16 @@ export default async function handler(req, res) {
 
     } catch (err) {
       clearTimeout(timeout);
-
       if (err.name === "AbortError") {
-        console.warn(`Model ${model} timed out after 30s — skipping`);
-        continue; // Try next model
+        console.warn(`Model ${model} timed out — skipping`);
+        continue;
       }
-
-      console.error(`Unexpected error with model ${model}:`, err);
+      console.error(`Error with model ${model}:`, err);
       continue;
     }
   }
 
-  // ── All models failed ──────────────────────────────────────────
-  console.error("All HuggingFace models failed or were unavailable.");
   return res.status(502).json({
-    error:
-      "All AI models are currently unavailable. Please check that your HF_TOKEN is valid and try again in a moment. 🙏",
+    error: "All AI models are currently unavailable. Please check your HF_TOKEN and try again. 🙏",
   });
 }
