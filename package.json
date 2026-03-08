@@ -1,7 +1,7 @@
 {
   "name": "eimemeschat",
   "version": "2.0.0",
-  "description": "EimemesChat AI — powered by HuggingFace LLaMA",
+  "description": "EimemesChat AI — powered by Groq",
   "private": true,
   "engines": {
     "node": ">=18"
