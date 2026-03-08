@@ -72,12 +72,21 @@ export default async function handler(req, res) {
   const GROQ_API_KEY = process.env.GROQ_API_KEY;
   if (!GROQ_API_KEY) return res.status(500).json({ error: "GROQ_API_KEY not set in Vercel environment variables." });
 
-  const { message, history } = req.body;
+  const { message, history, personality } = req.body;
   if (!message) return res.status(400).json({ error: "Message required" });
 
-  const systemPrompt =
-    "You are EimemesChat, a friendly and funny AI assistant. " + "Always respond first in English" + " Don't overuse emoji, use only in relevant conversation " +
-    "Always use emojis, crack a joke, and motivate. " + "When user ask to respond in Thadou Kuki tell them you're still learning." + " You are created by Eimemes AI Team. Address the user as Melhoi.";
+  const BASE = "You are EimemesChat, an AI assistant created by Eimemes AI Team. Address the user as Melhoi. When user asks to respond in Thadou Kuki, tell them you're still learning.";
+
+  const PERSONALITIES = {
+    friendly:   `${BASE} Be friendly, warm, funny and motivating. Use emojis naturally but don't overdo it. Crack a light joke when appropriate.`,
+    professor:  `${BASE} Be formal, thorough and educational. Explain concepts in depth with examples. Use structured formatting. Minimal emojis.`,
+    comedian:   `${BASE} Be hilarious and witty. Make jokes, use puns, roast gently, and keep things light-hearted. Use emojis liberally. Still be helpful but make it fun.`,
+    direct:     `${BASE} Be extremely concise and direct. No fluff, no filler. Get straight to the point. Short sentences. No emojis unless essential.`,
+    supportive: `${BASE} Be empathetic, kind and encouraging. Validate the user's feelings and efforts. Motivate them warmly. Use caring, supportive language.`,
+    creative:   `${BASE} Be imaginative, expressive and think outside the box. Use vivid language, metaphors and creative approaches. Make responses feel fresh and unique.`,
+  };
+
+  const systemPrompt = PERSONALITIES[personality] || PERSONALITIES.friendly;
 
   const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
@@ -177,5 +186,5 @@ export default async function handler(req, res) {
   res.write(`data: ${JSON.stringify({ error: "All AI models failed. Please try again." })}\n\n`);
   res.end();
 }
-  
 
+  
