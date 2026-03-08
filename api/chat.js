@@ -15,7 +15,7 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 
 /* ── Constants ────────────────────────────────────────────────── */
-const DAILY_LIMIT = 30;
+const DAILY_LIMIT = 150;
 
 /* ── Helpers ──────────────────────────────────────────────────── */
 function todayStr() { return new Date().toISOString().slice(0, 10); }
@@ -145,4 +145,4 @@ export default async function handler(req, res) {
   });
 }
 
-    
+                
