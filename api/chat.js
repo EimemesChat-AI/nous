@@ -88,6 +88,14 @@ export default async function handler(req, res) {
     "gemma2-9b-it",
   ];
 
+  // Set SSE headers for streaming
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+
+  const title = (!history?.length) ? message.slice(0, 50) + (message.length > 50 ? "…" : "") : null;
+
   for (const model of MODELS) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 30000);
@@ -108,29 +116,55 @@ export default async function handler(req, res) {
             ...(Array.isArray(history) ? history.slice(-6).map(({ role, content }) => ({ role, content })) : []),
             { role: "user", content: message },
           ],
-          max_tokens: 300,
+          max_tokens: 600,
           temperature: 0.75,
-          stream: false,
+          stream: true,
         }),
         signal: controller.signal,
       });
 
       clearTimeout(timer);
 
-      const rawText = await groqRes.text();
-      console.log(`[${model}] status=${groqRes.status} body=${rawText.slice(0, 400)}`);
-
       if (!groqRes.ok) {
-        console.warn(`[${model}] Failed with ${groqRes.status}, trying next...`);
+        const errText = await groqRes.text();
+        console.warn(`[${model}] Failed ${groqRes.status}: ${errText.slice(0,200)}, trying next...`);
         continue;
       }
 
-      const data  = JSON.parse(rawText);
-      const reply = data?.choices?.[0]?.message?.content?.trim() || "Hey Melhoi! 😊 Ask me anything!";
-      const title = (!history?.length) ? message.slice(0, 50) + (message.length > 50 ? "…" : "") : null;
+      console.log(`✅ Streaming: ${model}`);
 
-      console.log(`✅ Success: ${model}`);
-      return res.status(200).json({ reply, model, ...(title && { title }) });
+      const reader  = groqRes.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      let fullText = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop(); // keep incomplete line
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6).trim();
+          if (data === "[DONE]") continue;
+          try {
+            const parsed = JSON.parse(data);
+            const token  = parsed.choices?.[0]?.delta?.content || "";
+            if (token) {
+              fullText += token;
+              res.write(`data: ${JSON.stringify({ token })}\n\n`);
+            }
+          } catch {}
+        }
+      }
+
+      // Send final metadata event
+      res.write(`data: ${JSON.stringify({ done: true, model, ...(title && { title }), reply: fullText })}\n\n`);
+      res.end();
+      return;
 
     } catch (err) {
       clearTimeout(timer);
@@ -140,9 +174,8 @@ export default async function handler(req, res) {
     }
   }
 
-  return res.status(502).json({
-    error: "All AI models failed. Check /api/debug to diagnose your GROQ_API_KEY.",
-  });
+  res.write(`data: ${JSON.stringify({ error: "All AI models failed. Please try again." })}\n\n`);
+  res.end();
 }
+  
 
-                
