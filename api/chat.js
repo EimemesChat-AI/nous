@@ -105,7 +105,7 @@ export default async function handler(req, res) {
           model,
           messages: [
             { role: "system", content: systemPrompt },
-            ...(Array.isArray(history) ? history.slice(-6) : []),
+            ...(Array.isArray(history) ? history.slice(-6).map(({ role, content }) => ({ role, content })) : []),
             { role: "user", content: message },
           ],
           max_tokens: 300,
@@ -145,4 +145,4 @@ export default async function handler(req, res) {
   });
 }
 
-  
+    
