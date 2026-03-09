@@ -1,4 +1,11 @@
 // api/chat.js
+// v2.3 — Reverted title to slice method (reliable); removed AI title generation
+// Changelog:
+//   v2.3 — Title reverted to first-message slice; version comments added
+//   v2.2 — Parallel AI title generation (removed — unreliable)
+//   v2.1 — Disclaimer flag for critical topics; knowledge base injected
+//   v2.0 — Groq streaming SSE; system prompt security rules
+//   v1.0 — Initial HuggingFace version
 import admin from "firebase-admin";
 import { STATIC_KNOWLEDGE } from "../knowledge.js";
 
@@ -97,27 +104,10 @@ export default async function handler(req, res) {
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no");
 
-  // AI-generated title — runs in parallel with the main response for speed
-  let titlePromise = Promise.resolve(null);
-  if (!history?.length) {
-    titlePromise = fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "llama3-8b-8192",
-        messages: [
-          { role: "system", content: "Generate a short, concise chat title (max 6 words, no quotes, no punctuation at end) summarizing what the user is asking about." },
-          { role: "user", content: message }
-        ],
-        max_tokens: 20, temperature: 0.5, stream: false,
-      }),
-    }).then(r => r.ok ? r.json() : null)
-      .then(td => {
-        const raw = td?.choices?.[0]?.message?.content?.trim() || "";
-        return raw.replace(/^["\']/g, "").replace(/["\'.]$/g, "").slice(0, 60) || null;
-      })
-      .catch(() => message.slice(0, 50) + (message.length > 50 ? "…" : ""));
-  }
+  // Simple title from first message — reliable and instant
+  const title = (!history?.length)
+    ? message.slice(0, 50) + (message.length > 50 ? "…" : "")
+    : null;
 
   for (const model of MODELS) {
     const controller = new AbortController();
@@ -185,7 +175,6 @@ export default async function handler(req, res) {
       }
 
       // Send final metadata event
-      const title = await titlePromise;
       res.write(`data: ${JSON.stringify({ done: true, model, ...(title && { title }), reply: fullText, ...(needsDisclaimer && { disclaimer: true }) })}\n\n`);
       res.end();
       return;
@@ -201,4 +190,5 @@ export default async function handler(req, res) {
   res.write(`data: ${JSON.stringify({ error: "All AI models failed. Please try again." })}\n\n`);
   res.end();
 }
-  
+
+              
