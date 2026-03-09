@@ -97,28 +97,26 @@ export default async function handler(req, res) {
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no");
 
-  // AI-generated title for first message of a conversation
-  let title = null;
+  // AI-generated title — runs in parallel with the main response for speed
+  let titlePromise = Promise.resolve(null);
   if (!history?.length) {
-    try {
-      const titleRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "llama3-8b-8192",
-          messages: [
-            { role: "system", content: "Generate a short, concise chat title (max 6 words, no quotes, no punctuation at end) summarizing what the user is asking about." },
-            { role: "user", content: message }
-          ],
-          max_tokens: 20, temperature: 0.5, stream: false,
-        }),
-      });
-      if (titleRes.ok) {
-        const td = await titleRes.json();
+    titlePromise = fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "llama3-8b-8192",
+        messages: [
+          { role: "system", content: "Generate a short, concise chat title (max 6 words, no quotes, no punctuation at end) summarizing what the user is asking about." },
+          { role: "user", content: message }
+        ],
+        max_tokens: 20, temperature: 0.5, stream: false,
+      }),
+    }).then(r => r.ok ? r.json() : null)
+      .then(td => {
         const raw = td?.choices?.[0]?.message?.content?.trim() || "";
-        title = raw.replace(/^["\']/g, "").replace(/["\'.]$/g, "").slice(0, 60);
-      }
-    } catch { title = message.slice(0, 50) + (message.length > 50 ? "…" : ""); }
+        return raw.replace(/^["\']/g, "").replace(/["\'.]$/g, "").slice(0, 60) || null;
+      })
+      .catch(() => message.slice(0, 50) + (message.length > 50 ? "…" : ""));
   }
 
   for (const model of MODELS) {
@@ -187,6 +185,7 @@ export default async function handler(req, res) {
       }
 
       // Send final metadata event
+      const title = await titlePromise;
       res.write(`data: ${JSON.stringify({ done: true, model, ...(title && { title }), reply: fullText, ...(needsDisclaimer && { disclaimer: true }) })}\n\n`);
       res.end();
       return;
@@ -202,5 +201,4 @@ export default async function handler(req, res) {
   res.write(`data: ${JSON.stringify({ error: "All AI models failed. Please try again." })}\n\n`);
   res.end();
 }
-
-    
+  
