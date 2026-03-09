@@ -1397,8 +1397,8 @@ settingsBackBtn.addEventListener('click', () => showView(chatView));
 const CHIPS = [
   { label:'Write a professional email',  prompt:'Help me write a professional email' },
   { label:'Explain quantum computing',   prompt:'Explain quantum computing simply' },
-  { label:'Debug my code',              prompt:'Help me debug my code' },
-  { label:'Plan a trip to Tokyo',        prompt:'Plan a 5-day trip to Tokyo' },
+  { label:'Quote of the day',              prompt:'Write quote of the day' },
+  { label:'Bible Verse of the day',        prompt:'Write a Bible Verse of the day' },
 ];
 
 function getWelcomeHTML() {
@@ -1408,7 +1408,7 @@ function getWelcomeHTML() {
     </div>`;
   return `
     <div class="welcome" id="welcomeSection">
-      <div class="welcome-title gradient-title">EimemesChat AI</div>
+      <div class="welcome-title gradient-title">✦ EimemesChat AI</div>
       <div class="welcome-sub">How can I help you today?</div>
       ${chips}
     </div>`;
