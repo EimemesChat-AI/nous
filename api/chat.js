@@ -1,5 +1,5 @@
 // api/chat.js
-// v2.3 — Reverted title to slice method (reliable); removed AI title generation
+// v2.5 — Removed dead title logic; title now handled entirely by frontend
 // Changelog:
 //   v2.3 — Title reverted to first-message slice; version comments added
 //   v2.2 — Parallel AI title generation (removed — unreliable)
@@ -104,10 +104,7 @@ export default async function handler(req, res) {
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no");
 
-  // Simple title from first message — reliable and instant
-  const title = (!history?.length)
-    ? message.slice(0, 50) + (message.length > 50 ? "…" : "")
-    : null;
+  // Title is now set by the frontend directly — no backend title logic needed
 
   for (const model of MODELS) {
     const controller = new AbortController();
@@ -175,7 +172,7 @@ export default async function handler(req, res) {
       }
 
       // Send final metadata event
-      res.write(`data: ${JSON.stringify({ done: true, model, ...(title && { title }), reply: fullText, ...(needsDisclaimer && { disclaimer: true }) })}\n\n`);
+      res.write(`data: ${JSON.stringify({ done: true, model, reply: fullText, ...(needsDisclaimer && { disclaimer: true }) })}\n\n`);
       res.end();
       return;
 
@@ -191,4 +188,4 @@ export default async function handler(req, res) {
   res.end();
 }
 
-              
+    
