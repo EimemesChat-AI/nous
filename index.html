@@ -65,6 +65,7 @@
       --sh-input:  0 16px 48px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.3);
       --sat: env(safe-area-inset-top,    0px);
       --sab: env(safe-area-inset-bottom, 0px);
+      --fade-top: #141417;
     }
     /* Light glass override */
     @media (prefers-color-scheme: light) {
@@ -89,6 +90,7 @@
         --sh-sm:     0 2px 10px rgba(0,0,0,0.08);
         --sh-md:     0 10px 40px rgba(0,0,0,0.14);
         --sh-input:  0 16px 48px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
+        --fade-top: #dfe0ea;
       }
     }
     /* Explicit dark override */
@@ -115,6 +117,7 @@
       --sh-sm:     0 2px 10px rgba(0,0,0,0.35);
       --sh-md:     0 10px 40px rgba(0,0,0,0.55);
       --sh-input:  0 16px 48px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.3);
+      --fade-top: #141417;
     }
     /* Explicit light override */
     html.light {
@@ -140,6 +143,7 @@
       --sh-sm:     0 2px 10px rgba(0,0,0,0.08);
       --sh-md:     0 10px 40px rgba(0,0,0,0.14);
       --sh-input:  0 16px 48px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
+      --fade-top: #dfe0ea;
     }
 
     /* ═══════════════════════════════════════════
@@ -329,51 +333,60 @@
     .view.active { display:flex; }
 
     /* ═══════════════════════════════════════════
-       TOP BAR — minimal, transparent
+       GRADIENT FADE BAR (top) — like ChatGPT
+       Solid bg colour at top fading to transparent.
+       Buttons live inside it; messages scroll beneath.
     ═══════════════════════════════════════════ */
-    .topbar {
-      display:flex; align-items:center;
-      position: absolute; top:0; left:0; right:0; z-index:20;
-      height: calc(60px + var(--sat));
-      padding: var(--sat) 14px 0;
-      background: transparent;
-      gap:8px; pointer-events:none;
+    .top-fade {
+      /* absolute so it overlays the scroll area without affecting layout */
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      z-index: 20;
+      height: calc(80px + var(--sat));
+      /* gradient: bg colour → transparent */
+      background: linear-gradient(
+        to bottom,
+        var(--fade-top) 0%,
+        var(--fade-top) 30%,
+        transparent 100%
+      );
+      pointer-events: none;
+      display: flex;
+      align-items: flex-start;
+      padding: calc(16px + var(--sat)) 16px 0;
+      gap: 0;
     }
-    .topbar > * { pointer-events:all; }
-    .menu-btn       { display:none; }
-    .topbar-newchat { display:none; }
+    .top-fade > * { pointer-events: all; }
+
+    /* Spacer pushes title to centre */
+    .top-fade-spacer { flex: 1; }
 
     .topbar-title {
-      flex:1; font-size:15px; font-weight:600; color:var(--text-1);
-      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      position: absolute;
+      left: 50%; transform: translateX(-50%);
+      top: calc(20px + var(--sat));
+      font-size: 15px; font-weight: 600; color: var(--text-1);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       letter-spacing: -0.1px;
-      text-align: center;
-      text-shadow: 0 1px 6px rgba(0,0,0,0.4);
+      max-width: 50%;
+      pointer-events: none;
     }
 
-    /* ── Floating action buttons (menu ☰ and new chat +) ────────
-       Exact match to iOS.html: pill-shaped, glass, top corners  */
-    .float-btn {
-      position: absolute;
-      top: calc(16px + var(--sat));
-      width: 44px; height: 44px;
-      border-radius: 30px;
-      background: var(--glass-1);
-      backdrop-filter: blur(20px) saturate(180%);
-      -webkit-backdrop-filter: blur(20px) saturate(180%);
-      border: 1px solid var(--border);
+    /* Buttons inside the fade bar — simple round icon buttons */
+    .menu-btn, .topbar-newchat { display: none; }
+    .top-fade-btn {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: transparent;
+      border: none;
       display: flex; align-items: center; justify-content: center;
-      color: var(--text-1);
-      z-index: 25;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.35);
-      transition: background 0.2s, transform 0.15s;
+      color: var(--text-2);
       cursor: pointer;
+      transition: background 0.15s, color 0.15s;
       flex-shrink: 0;
     }
-    .float-btn:hover { background: var(--glass-2); transform: scale(1.06); }
-    .float-btn svg   { width: 18px; height: 18px; }
-    .float-menu-btn  { left: 16px; }
-    .float-new-btn   { right: 16px; }
+    .top-fade-btn:hover { background: var(--glass-2); color: var(--text-1); }
+    .top-fade-btn svg { width: 20px; height: 20px; }
 
     /* ═══════════════════════════════════════════
        MESSAGES AREA
@@ -383,13 +396,15 @@
       -webkit-overflow-scrolling:touch;
       overscroll-behavior-y:contain;
       background: transparent;
+      /* prevent pull-to-refresh bounce fighting the layout */
+      overscroll-behavior: none;
     }
     .messages-wrap::-webkit-scrollbar { width:4px; }
     .messages-wrap::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
 
     .messages-inner {
       max-width:740px; margin:0 auto;
-      padding:calc(80px + var(--sat)) 22px 160px;
+      padding:calc(72px + var(--sat)) 22px 20px;
       display:flex; flex-direction:column; gap:0;
     }
 
@@ -564,18 +579,22 @@
     @keyframes tdot { 0%,60%,100% { transform:translateY(0); } 30% { transform:translateY(-5px); } }
 
     /* ═══════════════════════════════════════════
-       INPUT AREA — floating, absolute like iOS.html
+       INPUT AREA — stable flex-flow, gradient backdrop
+       NOT absolute — keyboard resize stays smooth.
     ═══════════════════════════════════════════ */
     .input-area {
-      position: absolute;
-      bottom: 0; left: 0; right: 0;
+      flex-shrink: 0;
       padding: 10px 18px;
       padding-bottom: calc(14px + var(--sab));
-      background: transparent;
-      z-index: 20;
-      pointer-events: none;
+      /* Gradient behind the pill — fades from transparent to bg */
+      background: linear-gradient(
+        to bottom,
+        transparent 0%,
+        var(--fade-top) 55%
+      );
+      position: relative;
+      z-index: 10;
     }
-    .input-area > * { pointer-events: all; }
     .input-inner {
       max-width:740px; margin:0 auto;
       position:relative;
@@ -964,28 +983,27 @@
       }
       .sidebar.open { transform:translateX(0); }
 
-      .menu-btn       { display:flex; }
-      .topbar-newchat { display:flex; }
+      /* show nav buttons in fade bar on mobile */
+      .menu-btn, .topbar-newchat { display:flex; }
+      .top-fade-btn { display:flex; }
 
-      .messages-inner { padding:calc(76px + var(--sat)) 14px 160px; }
+      .messages-inner { padding:calc(72px + var(--sat)) 14px 20px; }
       .input-area     { padding:8px 12px calc(12px + var(--sab)); }
       .welcome-title  { font-size:28px; }
       .chip           { font-size:13.5px; padding:9px 14px; }
-      .float-menu-btn { left: 12px; }
-      .float-new-btn  { right: 12px; }
     }
 
     /* ═══════════════════════════════════════════
        DESKTOP (> 768px)
     ═══════════════════════════════════════════ */
     @media (min-width: 769px) {
-      .menu-btn            { display:none !important; }
-      .topbar-newchat      { display:none !important; }
-      .sidebar-mask        { display:none !important; }
-      #closeSidebarBtn     { display:none; }
-      .float-menu-btn      { display:none !important; }
-      .float-new-btn       { display:none !important; }
-      .topbar              { display:none !important; }
+      .menu-btn       { display:none !important; }
+      .topbar-newchat { display:none !important; }
+      .sidebar-mask   { display:none !important; }
+      #closeSidebarBtn{ display:none; }
+      /* on desktop, sidebar always visible — hide fade bar nav buttons */
+      .top-fade-btn   { display:none !important; }
+      /* still show fade on desktop for title + gradient effect */
     }
   </style>
 </head>
@@ -1040,26 +1058,23 @@
 
     <!-- CHAT VIEW -->
     <div class="view active" id="chatView">
-      <!-- Floating menu button (left) -->
-      <button class="float-btn float-menu-btn menu-btn" id="menuBtn" aria-label="Menu">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="3" y1="6" x2="21" y2="6"/>
-          <line x1="3" y1="12" x2="21" y2="12"/>
-          <line x1="3" y1="18" x2="21" y2="18"/>
-        </svg>
-      </button>
-
-      <!-- Floating new chat button (right) -->
-      <button class="float-btn float-new-btn topbar-newchat" id="topbarNewChat" aria-label="New chat">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
-      </button>
-
-      <!-- Minimal topbar — title only, transparent -->
-      <header class="topbar">
+      <!-- Gradient fade bar — like ChatGPT top gradient -->
+      <div class="top-fade">
+        <button class="top-fade-btn menu-btn" id="menuBtn" aria-label="Menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <line x1="3" y1="12" x2="21" y2="12"/>
+            <line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
+        <div class="top-fade-spacer"></div>
+        <button class="top-fade-btn topbar-newchat" id="topbarNewChat" aria-label="New chat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </button>
         <span class="topbar-title" id="topbarTitle">✦ EimemesChat</span>
-      </header>
+      </div>
 
       <div class="messages-wrap" id="messagesWrap">
         <div class="messages-inner" id="messagesInner"></div>
