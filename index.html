@@ -325,30 +325,55 @@
     /* ═══════════════════════════════════════════
        VIEWS
     ═══════════════════════════════════════════ */
-    .view { display:none; flex-direction:column; width:100%; height:100%; overflow:hidden; }
+    .view { display:none; flex-direction:column; width:100%; height:100%; overflow:hidden; position:relative; }
     .view.active { display:flex; }
 
     /* ═══════════════════════════════════════════
-       TOP BAR
+       TOP BAR — minimal, transparent
     ═══════════════════════════════════════════ */
     .topbar {
       display:flex; align-items:center;
-      height: calc(58px + var(--sat));
+      position: absolute; top:0; left:0; right:0; z-index:20;
+      height: calc(60px + var(--sat));
       padding: var(--sat) 14px 0;
-      background: var(--glass-1);
-      backdrop-filter: blur(20px) saturate(180%);
-      -webkit-backdrop-filter: blur(20px) saturate(180%);
-      border-bottom:1px solid var(--border-b);
-      gap:8px; flex-shrink:0;
+      background: transparent;
+      gap:8px; pointer-events:none;
     }
+    .topbar > * { pointer-events:all; }
     .menu-btn       { display:none; }
     .topbar-newchat { display:none; }
 
     .topbar-title {
-      flex:1; font-size:15.5px; font-weight:500; color:var(--text-2);
+      flex:1; font-size:15px; font-weight:600; color:var(--text-1);
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
       letter-spacing: -0.1px;
+      text-align: center;
+      text-shadow: 0 1px 6px rgba(0,0,0,0.4);
     }
+
+    /* ── Floating action buttons (menu ☰ and new chat +) ────────
+       Exact match to iOS.html: pill-shaped, glass, top corners  */
+    .float-btn {
+      position: absolute;
+      top: calc(16px + var(--sat));
+      width: 44px; height: 44px;
+      border-radius: 30px;
+      background: var(--glass-1);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-1);
+      z-index: 25;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+      transition: background 0.2s, transform 0.15s;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .float-btn:hover { background: var(--glass-2); transform: scale(1.06); }
+    .float-btn svg   { width: 18px; height: 18px; }
+    .float-menu-btn  { left: 16px; }
+    .float-new-btn   { right: 16px; }
 
     /* ═══════════════════════════════════════════
        MESSAGES AREA
@@ -364,7 +389,7 @@
 
     .messages-inner {
       max-width:740px; margin:0 auto;
-      padding:28px 22px 150px;
+      padding:calc(80px + var(--sat)) 22px 160px;
       display:flex; flex-direction:column; gap:0;
     }
 
@@ -477,41 +502,31 @@
     .msg-body th,.msg-body td { border:1px solid var(--border); padding:7px 10px; font-size:14px; }
     .msg-body th { background:var(--glass-2); font-weight:600; }
     .msg-body code:not(pre code) {
-      background:var(--code-bg); border:1px solid var(--border-b);
-      padding:2px 6px; border-radius:6px; font-size:13.5px; font-family:monospace;
+      background:var(--code-bg); padding:1px 5px; border-radius:4px;
+      font-family:'Fira Code','Courier New',monospace;
+      font-size:14px; color:var(--text-1); border:1px solid var(--border);
     }
     .msg-disclaimer {
-      margin-top:10px; padding:10px 14px;
-      border-radius:12px; background:rgba(255,160,0,0.1);
-      border:1px solid rgba(255,160,0,0.2);
-      font-size:12.5px; color:rgba(255,160,0,0.85); line-height:1.5;
+      font-size: 11.5px;
+      color: var(--text-3);
+      margin-top: 8px;
+      padding: 6px 10px;
+      border-left: 2px solid var(--border);
+      line-height: 1.5;
     }
 
-    /* Code blocks */
-    .code-block {
-      margin:12px 0; border-radius:16px; overflow:hidden;
-      border:1px solid var(--border-b);
-      background:var(--code-bg);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-    }
-    .code-block-head {
-      display:flex; align-items:center; justify-content:space-between;
-      padding:8px 14px;
-      border-bottom:1px solid var(--border-b);
-      background:var(--glass-3);
-    }
-    .code-lang { font-size:11px; font-weight:600; letter-spacing:0.5px; text-transform:uppercase; color:var(--text-3); }
-    .copy-btn  {
-      font-size:12px; font-weight:500; color:var(--accent);
-      padding:3px 10px; border-radius:8px;
-      border:1px solid var(--accent-dim); background:var(--accent-dim);
-      transition:opacity 0.15s;
-    }
-    .copy-btn.copied { color:#30d158; border-color:rgba(48,209,88,0.2); background:rgba(48,209,88,0.1); }
-    .code-block pre { margin:0; padding:14px 16px; overflow-x:auto; font-size:13.5px; }
+    /* Code blocks — original clean style */
+    .code-block { background:var(--code-bg); border:1px solid var(--border); border-radius:10px; margin:10px 0; overflow:hidden; }
+    .code-block-head { display:flex; align-items:center; justify-content:space-between; padding:8px 14px; border-bottom:1px solid var(--border); }
+    .code-lang  { font-size:12px; font-weight:600; color:var(--text-3); text-transform:lowercase; }
+    .copy-btn   { font-size:12px; color:var(--text-3); padding:3px 10px; border-radius:6px; border:1px solid var(--border); background:var(--glass-3); transition:background 0.15s, color 0.15s; }
+    .copy-btn:hover  { background:var(--border); color:var(--text-1); }
+    .copy-btn.copied { color:var(--accent); border-color:var(--accent); }
+    .code-block pre  { padding:14px; overflow-x:auto; margin:0; }
     .code-block pre::-webkit-scrollbar { height:4px; }
     .code-block pre::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+    .code-block pre code { background:none; border:none; padding:0; font-size:14px; line-height:1.6; white-space:pre; word-wrap:normal; font-family:'Fira Code','Courier New',monospace; }
+    .hljs { background: transparent !important; }
 
     /* Streaming cursor */
     .stream-cursor {
@@ -549,14 +564,18 @@
     @keyframes tdot { 0%,60%,100% { transform:translateY(0); } 30% { transform:translateY(-5px); } }
 
     /* ═══════════════════════════════════════════
-       INPUT AREA
+       INPUT AREA — floating, absolute like iOS.html
     ═══════════════════════════════════════════ */
     .input-area {
-      flex-shrink:0;
-      padding:10px 18px;
-      padding-bottom: calc(12px + var(--sab));
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      padding: 10px 18px;
+      padding-bottom: calc(14px + var(--sab));
       background: transparent;
+      z-index: 20;
+      pointer-events: none;
     }
+    .input-area > * { pointer-events: all; }
     .input-inner {
       max-width:740px; margin:0 auto;
       position:relative;
@@ -584,22 +603,9 @@
     .input-box::placeholder { color:var(--text-3); }
 
     /* Newline button — mobile only */
-    .newline-btn {
-      display: none;
-      position: absolute; left: 10px;
-      top: 50%; transform: translateY(-50%);
-      width: 32px; height: 32px; border-radius: 10px;
-      background: none; color: var(--text-3);
-      align-items: center; justify-content: center;
-      transition: color 0.15s;
-      flex-shrink: 0;
-    }
-    .newline-btn:hover { color: var(--text-1); }
-    .newline-btn svg { width: 16px; height: 16px; }
-    @media (max-width: 768px) {
-      .newline-btn { display: flex; }
-      .input-box   { padding-left: 48px; }
-    }
+    .newline-btn { display: none !important; }
+    /* input-box full width now — no left button */
+    .input-box { padding-left: 20px !important; }
 
     .send-btn {
       position:absolute; right:8px;
@@ -628,22 +634,29 @@
     .stop-btn:hover { opacity: 0.85; transform:translateY(-50%) scale(1.06); }
     .stop-btn svg { width:13px; height:13px; }
 
-    /* Regenerate button */
-    .regen-btn {
+    /* Message action buttons row */
+    .msg-actions {
       display: inline-flex; align-items: center; gap: 6px;
       margin-top: 10px;
-      padding: 7px 16px; border-radius: 30px;
+    }
+    .msg-action-btn {
+      width: 32px; height: 32px;
+      border-radius: 50%;
       border: 1px solid var(--border);
       background: var(--glass-2);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
       color: var(--text-2);
-      font-size: 13px; font-weight: 500;
+      display: inline-flex; align-items: center; justify-content: center;
       cursor: pointer; font-family: inherit;
-      transition: border-color 0.15s, color 0.15s, background 0.15s;
+      transition: border-color 0.15s, color 0.15s, background 0.15s, transform 0.1s;
+      flex-shrink: 0;
     }
-    .regen-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
-    .regen-btn svg { width: 12px; height: 12px; }
+    .msg-action-btn:hover { background: var(--glass-1); color: var(--text-1); border-color: var(--border); transform: scale(1.1); }
+    .msg-action-btn svg { width: 13px; height: 13px; }
+    .msg-action-btn.regen-btn:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-dim); }
+    .msg-action-btn.thumb-up.active   { color: #30d158; border-color: rgba(48,209,88,0.4); background: rgba(48,209,88,0.12); }
+    .msg-action-btn.thumb-down.active { color: #ff6b6b; border-color: rgba(255,107,107,0.4); background: rgba(255,107,107,0.12); }
 
     /* Input hint */
     .input-hint { text-align:center; font-size:11px; color:var(--text-3); margin-top:8px; letter-spacing:0.1px; }
@@ -954,10 +967,12 @@
       .menu-btn       { display:flex; }
       .topbar-newchat { display:flex; }
 
-      .messages-inner { padding:20px 16px 150px; }
-      .input-area     { padding:8px 12px calc(10px + var(--sab)); }
+      .messages-inner { padding:calc(76px + var(--sat)) 14px 160px; }
+      .input-area     { padding:8px 12px calc(12px + var(--sab)); }
       .welcome-title  { font-size:28px; }
       .chip           { font-size:13.5px; padding:9px 14px; }
+      .float-menu-btn { left: 12px; }
+      .float-new-btn  { right: 12px; }
     }
 
     /* ═══════════════════════════════════════════
@@ -968,6 +983,9 @@
       .topbar-newchat      { display:none !important; }
       .sidebar-mask        { display:none !important; }
       #closeSidebarBtn     { display:none; }
+      .float-menu-btn      { display:none !important; }
+      .float-new-btn       { display:none !important; }
+      .topbar              { display:none !important; }
     }
   </style>
 </head>
@@ -1022,20 +1040,25 @@
 
     <!-- CHAT VIEW -->
     <div class="view active" id="chatView">
+      <!-- Floating menu button (left) -->
+      <button class="float-btn float-menu-btn menu-btn" id="menuBtn" aria-label="Menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+
+      <!-- Floating new chat button (right) -->
+      <button class="float-btn float-new-btn topbar-newchat" id="topbarNewChat" aria-label="New chat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+      </button>
+
+      <!-- Minimal topbar — title only, transparent -->
       <header class="topbar">
-        <button class="icon-btn menu-btn" id="menuBtn" aria-label="Menu">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="3" y1="6" x2="21" y2="6"/>
-            <line x1="3" y1="12" x2="21" y2="12"/>
-            <line x1="3" y1="18" x2="21" y2="18"/>
-          </svg>
-        </button>
         <span class="topbar-title" id="topbarTitle">✦ EimemesChat</span>
-        <button class="icon-btn topbar-newchat" id="topbarNewChat" aria-label="New chat">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-        </button>
       </header>
 
       <div class="messages-wrap" id="messagesWrap">
@@ -1064,7 +1087,7 @@
             </svg>
           </button>
         </div>
-        <div class="input-hint">EimemesChat may make mistakes. Verify important information.</div>
+        <div class="input-hint" style="pointer-events:none;">EimemesChat may make mistakes. Verify important information.</div>
       </div>
     </div>
 
@@ -1733,27 +1756,58 @@ topbarNewChat.addEventListener('click', () => createNewChat());
 /* ── Regenerate button ────────────────────────────────────────── */
 
 function addRegenButton(bodyEl, originalUserMsg) {
-  // Remove any existing regen btn first
-  bodyEl.querySelector('.regen-btn')?.remove();
-  const btn = document.createElement('button');
-  btn.className = 'regen-btn';
-  btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.54"/></svg> Regenerate`;
-  btn.addEventListener('click', async () => {
+  // Remove any existing actions row first
+  bodyEl.querySelector('.msg-actions')?.remove();
+
+  const row = document.createElement('div');
+  row.className = 'msg-actions';
+
+  // ── Regenerate (icon only) ──
+  const regenBtn = document.createElement('button');
+  regenBtn.className = 'msg-action-btn regen-btn';
+  regenBtn.title = 'Regenerate';
+  regenBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.54"/></svg>`;
+  regenBtn.addEventListener('click', async () => {
     if (isSending || isStreaming) return;
-    // Remove the last AI message from Firestore then resend
     const convRef = getConvRef(currentConvId);
     const snap = await getDoc(convRef);
     if (!snap.exists()) return;
     const msgs = snap.data().messages || [];
-    // Remove last assistant message
     const trimmed = [...msgs];
     while (trimmed.length && trimmed[trimmed.length - 1].role === 'assistant') trimmed.pop();
     await updateDoc(convRef, { messages: trimmed, updatedAt: new Date() });
-    // Fake sending the original user message again
     messageInput.value = originalUserMsg;
     sendMessage();
   });
-  bodyEl.appendChild(btn);
+
+  // ── Thumbs up ──
+  const upBtn = document.createElement('button');
+  upBtn.className = 'msg-action-btn thumb-up';
+  upBtn.title = 'Good response';
+  upBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>`;
+  upBtn.addEventListener('click', () => {
+    const wasActive = upBtn.classList.contains('active');
+    upBtn.classList.toggle('active', !wasActive);
+    downBtn.classList.remove('active');
+    if (!wasActive) showToast('Thanks for the feedback! 👍');
+  });
+
+  // ── Thumbs down ──
+  const downBtn = document.createElement('button');
+  downBtn.className = 'msg-action-btn thumb-down';
+  downBtn.title = 'Bad response';
+  downBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>`;
+  downBtn.addEventListener('click', () => {
+    const wasActive = downBtn.classList.contains('active');
+    downBtn.classList.toggle('active', !wasActive);
+    upBtn.classList.remove('active');
+    if (!wasActive) showToast('Thanks for the feedback! We'll improve.');
+  });
+
+  row.appendChild(regenBtn);
+  row.appendChild(upBtn);
+  row.appendChild(downBtn);
+  bodyEl.appendChild(row);
 }
 
 /* ── Send message ─────────────────────────────────────────────── */
