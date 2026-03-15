@@ -54,15 +54,15 @@
       --text-3:    rgba(255,255,255,0.30);
       --accent:    #4fa8ff;
       --accent-dim:rgba(10,132,255,0.18);
-      --bubble-u:  rgba(10,132,255,0.22);
-      --bubble-ub: rgba(10,132,255,0.16);
+      --bubble-u:  rgba(255,255,255,0.10);
+      --bubble-ub: rgba(255,255,255,0.07);
       --send-bg:   linear-gradient(145deg, #0a84ff 0%, #0062d6 100%);
       --send-fg:   #ffffff;
       --input-bg:  rgba(32,32,42,0.85);
       --code-bg:   rgba(0,0,0,0.32);
       --sh-sm:     0 2px 10px rgba(0,0,0,0.35);
       --sh-md:     0 10px 40px rgba(0,0,0,0.55);
-      --sh-input:  0 16px 48px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.3);
+      --sh-input:  0 2px 8px rgba(0,0,0,0.3);
       --sat: env(safe-area-inset-top,    0px);
       --sab: env(safe-area-inset-bottom, 0px);
       --fade-top: #141417;
@@ -108,15 +108,15 @@
       --text-3:    rgba(255,255,255,0.30);
       --accent:    #4fa8ff;
       --accent-dim:rgba(10,132,255,0.18);
-      --bubble-u:  rgba(10,132,255,0.22);
-      --bubble-ub: rgba(10,132,255,0.16);
+      --bubble-u:  rgba(255,255,255,0.10);
+      --bubble-ub: rgba(255,255,255,0.07);
       --send-bg:   linear-gradient(145deg, #0a84ff 0%, #0062d6 100%);
       --send-fg:   #ffffff;
       --input-bg:  rgba(32,32,42,0.85);
       --code-bg:   rgba(0,0,0,0.32);
       --sh-sm:     0 2px 10px rgba(0,0,0,0.35);
       --sh-md:     0 10px 40px rgba(0,0,0,0.55);
-      --sh-input:  0 16px 48px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.3);
+      --sh-input:  0 2px 8px rgba(0,0,0,0.3);
       --fade-top: #141417;
     }
     /* Explicit light override */
@@ -210,9 +210,7 @@
     .sidebar {
       width: 260px;
       flex-shrink: 0;
-      background: var(--glass-0);
-      backdrop-filter: blur(30px) saturate(180%);
-      -webkit-backdrop-filter: blur(30px) saturate(180%);
+      background: var(--bg-a);
       border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
@@ -329,64 +327,48 @@
     /* ═══════════════════════════════════════════
        VIEWS
     ═══════════════════════════════════════════ */
-    .view { display:none; flex-direction:column; width:100%; height:100%; overflow:hidden; position:relative; }
+    .view { display:none; flex-direction:column; width:100%; height:100%; overflow:hidden; }
     .view.active { display:flex; }
 
     /* ═══════════════════════════════════════════
-       GRADIENT FADE BAR (top) — like ChatGPT
-       Solid bg colour at top fading to transparent.
-       Buttons live inside it; messages scroll beneath.
+       TOP BAR — static, in normal flex flow.
+       Background fades to transparent at the bottom
+       so messages appear to scroll under it.
     ═══════════════════════════════════════════ */
-    .top-fade {
-      /* absolute so it overlays the scroll area without affecting layout */
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      z-index: 20;
-      height: calc(80px + var(--sat));
-      /* gradient: bg colour → transparent */
+    .topbar {
+      flex-shrink: 0;
+      display: flex; align-items: center;
+      height: calc(54px + var(--sat));
+      padding: var(--sat) 12px 0;
+      /* Gradient: solid bg → transparent — the ChatGPT effect */
       background: linear-gradient(
         to bottom,
         var(--fade-top) 0%,
-        var(--fade-top) 30%,
+        var(--fade-top) 60%,
         transparent 100%
       );
-      pointer-events: none;
-      display: flex;
-      align-items: flex-start;
-      padding: calc(16px + var(--sat)) 16px 0;
-      gap: 0;
+      gap: 8px;
+      position: relative;
+      z-index: 10;
     }
-    .top-fade > * { pointer-events: all; }
-
-    /* Spacer pushes title to centre */
-    .top-fade-spacer { flex: 1; }
+    .menu-btn       { display: none; }
+    .topbar-newchat { display: none; }
 
     .topbar-title {
-      position: absolute;
-      left: 50%; transform: translateX(-50%);
-      top: calc(20px + var(--sat));
-      font-size: 15px; font-weight: 600; color: var(--text-1);
+      flex: 1;
+      font-size: 15px; font-weight: 500; color: var(--text-2);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      letter-spacing: -0.1px;
-      max-width: 50%;
-      pointer-events: none;
+      letter-spacing: -0.1px; text-align: center;
     }
 
-    /* Buttons inside the fade bar — simple round icon buttons */
-    .menu-btn, .topbar-newchat { display: none; }
-    .top-fade-btn {
-      width: 36px; height: 36px;
-      border-radius: 50%;
+    /* topbar icon buttons — clean, no background */
+    .topbar .icon-btn {
       background: transparent;
       border: none;
-      display: flex; align-items: center; justify-content: center;
-      color: var(--text-2);
-      cursor: pointer;
-      transition: background 0.15s, color 0.15s;
-      flex-shrink: 0;
     }
-    .top-fade-btn:hover { background: var(--glass-2); color: var(--text-1); }
-    .top-fade-btn svg { width: 20px; height: 20px; }
+    .topbar .icon-btn:hover {
+      background: var(--glass-3);
+    }
 
     /* ═══════════════════════════════════════════
        MESSAGES AREA
@@ -404,7 +386,7 @@
 
     .messages-inner {
       max-width:740px; margin:0 auto;
-      padding:calc(72px + var(--sat)) 22px 20px;
+      padding:24px 22px 20px;
       display:flex; flex-direction:column; gap:0;
     }
 
@@ -579,21 +561,13 @@
     @keyframes tdot { 0%,60%,100% { transform:translateY(0); } 30% { transform:translateY(-5px); } }
 
     /* ═══════════════════════════════════════════
-       INPUT AREA — stable flex-flow, gradient backdrop
-       NOT absolute — keyboard resize stays smooth.
+       INPUT AREA — static, in normal flex flow
     ═══════════════════════════════════════════ */
     .input-area {
       flex-shrink: 0;
       padding: 10px 18px;
-      padding-bottom: calc(14px + var(--sab));
-      /* Gradient behind the pill — fades from transparent to bg */
-      background: linear-gradient(
-        to bottom,
-        transparent 0%,
-        var(--fade-top) 55%
-      );
-      position: relative;
-      z-index: 10;
+      padding-bottom: calc(12px + var(--sab));
+      background: var(--fade-top);
     }
     .input-inner {
       max-width:740px; margin:0 auto;
@@ -655,27 +629,25 @@
 
     /* Message action buttons row */
     .msg-actions {
-      display: inline-flex; align-items: center; gap: 6px;
-      margin-top: 10px;
+      display: inline-flex; align-items: center; gap: 2px;
+      margin-top: 8px;
     }
     .msg-action-btn {
-      width: 32px; height: 32px;
-      border-radius: 50%;
-      border: 1px solid var(--border);
-      background: var(--glass-2);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      color: var(--text-2);
+      width: 30px; height: 30px;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      color: var(--text-3);
       display: inline-flex; align-items: center; justify-content: center;
       cursor: pointer; font-family: inherit;
-      transition: border-color 0.15s, color 0.15s, background 0.15s, transform 0.1s;
+      transition: color 0.15s, transform 0.1s;
       flex-shrink: 0;
     }
-    .msg-action-btn:hover { background: var(--glass-1); color: var(--text-1); border-color: var(--border); transform: scale(1.1); }
-    .msg-action-btn svg { width: 13px; height: 13px; }
-    .msg-action-btn.regen-btn:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-dim); }
-    .msg-action-btn.thumb-up.active   { color: #30d158; border-color: rgba(48,209,88,0.4); background: rgba(48,209,88,0.12); }
-    .msg-action-btn.thumb-down.active { color: #ff6b6b; border-color: rgba(255,107,107,0.4); background: rgba(255,107,107,0.12); }
+    .msg-action-btn:hover { color: var(--text-1); transform: scale(1.12); }
+    .msg-action-btn svg { width: 14px; height: 14px; }
+    .msg-action-btn.regen-btn:hover { color: var(--accent); }
+    .msg-action-btn.thumb-up.active   { color: #30d158; }
+    .msg-action-btn.thumb-down.active { color: #ff6b6b; }
 
     /* Input hint */
     .input-hint { text-align:center; font-size:11px; color:var(--text-3); margin-top:8px; letter-spacing:0.1px; }
@@ -979,15 +951,15 @@
         position:fixed; top:0; left:0; bottom:0;
         width:280px; z-index:30;
         transform:translateX(-100%);
-        box-shadow: 4px 0 30px rgba(0,0,0,0.5);
+        box-shadow: none;
+        border-right: 1px solid var(--border);
       }
       .sidebar.open { transform:translateX(0); }
 
-      /* show nav buttons in fade bar on mobile */
-      .menu-btn, .topbar-newchat { display:flex; }
-      .top-fade-btn { display:flex; }
+      .menu-btn       { display:flex; }
+      .topbar-newchat { display:flex; }
 
-      .messages-inner { padding:calc(72px + var(--sat)) 14px 20px; }
+      .messages-inner { padding:20px 14px 20px; }
       .input-area     { padding:8px 12px calc(12px + var(--sab)); }
       .welcome-title  { font-size:28px; }
       .chip           { font-size:13.5px; padding:9px 14px; }
@@ -997,13 +969,10 @@
        DESKTOP (> 768px)
     ═══════════════════════════════════════════ */
     @media (min-width: 769px) {
-      .menu-btn       { display:none !important; }
-      .topbar-newchat { display:none !important; }
-      .sidebar-mask   { display:none !important; }
-      #closeSidebarBtn{ display:none; }
-      /* on desktop, sidebar always visible — hide fade bar nav buttons */
-      .top-fade-btn   { display:none !important; }
-      /* still show fade on desktop for title + gradient effect */
+      .menu-btn            { display:none !important; }
+      .topbar-newchat      { display:none !important; }
+      .sidebar-mask        { display:none !important; }
+      #closeSidebarBtn     { display:none; }
     }
   </style>
 </head>
@@ -1058,23 +1027,21 @@
 
     <!-- CHAT VIEW -->
     <div class="view active" id="chatView">
-      <!-- Gradient fade bar — like ChatGPT top gradient -->
-      <div class="top-fade">
-        <button class="top-fade-btn menu-btn" id="menuBtn" aria-label="Menu">
+      <header class="topbar">
+        <button class="icon-btn menu-btn" id="menuBtn" aria-label="Menu">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="3" y1="6" x2="21" y2="6"/>
             <line x1="3" y1="12" x2="21" y2="12"/>
             <line x1="3" y1="18" x2="21" y2="18"/>
           </svg>
         </button>
-        <div class="top-fade-spacer"></div>
-        <button class="top-fade-btn topbar-newchat" id="topbarNewChat" aria-label="New chat">
+        <span class="topbar-title" id="topbarTitle">✦ EimemesChat</span>
+        <button class="icon-btn topbar-newchat" id="topbarNewChat" aria-label="New chat">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
           </svg>
         </button>
-        <span class="topbar-title" id="topbarTitle">✦ EimemesChat</span>
-      </div>
+      </header>
 
       <div class="messages-wrap" id="messagesWrap">
         <div class="messages-inner" id="messagesInner"></div>
