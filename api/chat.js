@@ -1,6 +1,7 @@
 // api/chat.js
-// v3.1 — Real-time per-token system prompt leak detection via n-gram fingerprinting
+// v3.2 — Switched AI backend from Groq to Google Gemini (OpenAI-compatible endpoint)
 // Changelog:
+//   v3.2 — Replaced Groq with Google Gemini; updated model roster to Gemini models
 //   v3.1 — buildFingerprint + createStreamScanner; abort stream mid-flight on leak
 //   v3.0 — shield.js integrated; fastest models first; adaptive max_tokens
 //   v2.5 — Removed dead title logic; title now handled entirely by frontend
@@ -50,10 +51,10 @@ const MODEL_TIMEOUT_MS = 8000;
 
 /* ── Model roster — fastest first ────────────────────────────── */
 const MODELS = [
-  "llama-3.1-8b-instant",
-  "llama3-8b-8192",
-  "llama-3.3-70b-versatile",
-  "gemma2-9b-it",
+  "gemini-2.0-flash",
+  "gemini-2.0-flash-lite",
+  "gemini-1.5-flash",
+  "gemini-1.5-pro",
 ];
 
 /* ── Helpers ──────────────────────────────────────────────────── */
@@ -129,8 +130,8 @@ export default async function handler(req, res) {
     console.error("Daily limit check failed:", err.message);
   }
 
-  const GROQ_API_KEY = process.env.GROQ_API_KEY;
-  if (!GROQ_API_KEY) return res.status(500).json({ error: "GROQ_API_KEY not configured." });
+  const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
+  if (!GOOGLE_API_KEY) return res.status(500).json({ error: "GOOGLE_API_KEY not configured." });
 
   const { message, history } = req.body;
   if (!message) return res.status(400).json({ error: "Message required" });
@@ -157,7 +158,7 @@ export default async function handler(req, res) {
 
   setSSEHeaders(res);
 
-  const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+  const GOOGLE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 
   /* ── Model retry loop ─────────────────────────────────────────── */
   for (const model of MODELS) {
@@ -167,10 +168,10 @@ export default async function handler(req, res) {
     try {
       console.log(`[chat] uid=${uid} model=${model} maxTokens=${maxTokens}`);
 
-      const groqRes = await fetch(GROQ_URL, {
+      const groqRes = await fetch(GOOGLE_URL, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${GROQ_API_KEY}`,
+          Authorization: `Bearer ${GOOGLE_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -273,5 +274,6 @@ export default async function handler(req, res) {
   /* ── All models exhausted ─────────────────────────────────────── */
   sseEvent(res, { error: "All AI models are currently busy. Please try again in a moment." });
   res.end();
-    }
+}
+
   
