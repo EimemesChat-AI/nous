@@ -102,22 +102,72 @@ vercel --prod
 
 🔐 Firestore Security Rules
 
-```
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isOwner(userId) {
-      return request.auth != null && request.auth.uid == userId;
+
+    function isAuth() {
+      return request.auth != null;
     }
-    
-    match /users/{userId}/conversations/{convId} {
-      allow read, write: if isOwner(userId);
+
+    function isOwner(userId) {
+      return isAuth() && request.auth.uid == userId;
+    }
+
+    function isValidConversation() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['title', 'createdAt', 'updatedAt', 'messages'])
+        && data.title is string
+        && data.title.size() <= 200
+        && data.messages is list
+        && data.messages.size() <= 100;
+    }
+
+    function isMetaUpdate() {
+      let affected = request.resource.data.diff(resource.data).affectedKeys();
+      return affected.hasOnly(['title', 'updatedAt']);
+    }
+
+    function isMessagesUpdate() {
+      let affected = request.resource.data.diff(resource.data).affectedKeys();
+      return affected.hasOnly(['messages', 'updatedAt'])
+          || affected.hasOnly(['messages', 'updatedAt', 'title']);
+    }
+
+    match /users/{userId} {
+      allow read:   if isOwner(userId);
+      allow create: if isOwner(userId)
+                    && request.resource.data.keys().hasOnly(['email', 'displayName', 'photoURL', 'createdAt']);
+      allow update: if isOwner(userId)
+                    && request.resource.data.keys().hasOnly(['email', 'displayName', 'photoURL', 'updatedAt']);
+      allow delete: if isOwner(userId);
+
+      match /conversations/{convId} {
+        allow get:  if isOwner(userId);
+        allow list: if isOwner(userId);
+        
+        allow create: if isOwner(userId)
+                      && isValidConversation()
+                      && request.resource.data.messages.size() == 0;
+        
+        allow update: if isOwner(userId)
+                      && (isMessagesUpdate() || isMetaUpdate())
+                      // Only validate title if it's being updated
+                      && (!('title' in request.resource.data) || request.resource.data.title.size() <= 200)
+                      // Only validate messages if they're being updated
+                      && (!('messages' in request.resource.data) || request.resource.data.messages.size() <= 100);
+        
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    // Deny all other paths
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
-```
-
----
 
 🌐 Live Links
 
