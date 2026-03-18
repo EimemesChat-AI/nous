@@ -122,7 +122,7 @@ service cloud.firestore {
 🌐 Live Links
 
 Service URL
-Main App https://app.eimemeschat.com
+Main app https://eimemeschat-ai-ashy.vercel.app/
 Legal Hub https://legal.eimemeschat.com
 
 ---
