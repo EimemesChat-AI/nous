@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <!-- index.html
-     v3.1 — Profile page, word-by-word streaming, typing dots, UI fixes
+     v3.2 — Smooth instant token streaming (ChatGPT-style); removed word queue
      Changelog:
+       v3.2 — Replaced word-by-word timer queue with direct RAF token rendering
        v3.1 — Profile view (logout all devices, delete account); word-by-word
                streaming; bare typing dots (no bubble); input focus border removed;
                send button disabled during streaming; profile card navigates to profile page
@@ -2042,32 +2043,11 @@ async function sendMessage() {
     messagesInner.appendChild(streamRow);
     scrollToBottom();
 
-    let fullText    = '';
+    let fullText         = '';
     let streamModel      = '';
     let streamDisclaimer = false;
-    let rafPending  = false;
-    let buf         = '';
-
-    // Word-by-word display queue
-    let wordQueue   = [];
-    let displayedText = '';
-    let wordTimer   = null;
-
-    function flushWordQueue() {
-      if (wordQueue.length === 0) { wordTimer = null; return; }
-      displayedText += wordQueue.shift();
-      streamBody.innerHTML = renderMarkdown(displayedText) + '<span class="stream-cursor"></span>';
-      scrollToBottom();
-      wordTimer = setTimeout(flushWordQueue, 28);
-    }
-
-    function enqueueTokenWords(token) {
-      // Always word-by-word — typing indicator covers the thinking delay,
-      // this covers the streaming reveal for every response regardless of length
-      const pieces = token.match(/\S+\s*/g) || [token];
-      pieces.forEach(p => wordQueue.push(p));
-      if (!wordTimer) flushWordQueue();
-    }
+    let rafPending       = false;
+    let buf              = '';
 
     const reader  = res.body.getReader();
     const decoder = new TextDecoder();
@@ -2088,9 +2068,15 @@ async function sendMessage() {
           if (parsed.error) { fullText = parsed.error; }
           if (parsed.token) {
             fullText += parsed.token;
-            enqueueTokenWords(parsed.token);
+            if (!rafPending) {
+              rafPending = true;
+              requestAnimationFrame(() => {
+                streamBody.innerHTML = renderMarkdown(fullText) + '<span class="stream-cursor"></span>';
+                scrollToBottom();
+                rafPending = false;
+              });
+            }
           }
-          // Output shield: backend replaced streamed content with safe reply
           if (parsed.outputBlocked && parsed.safeReply) {
             fullText = parsed.safeReply;
             streamBody.innerHTML = renderMarkdown(fullText) + '<span class="stream-cursor"></span>';
@@ -2099,22 +2085,13 @@ async function sendMessage() {
           if (parsed.done) {
             streamModel      = parsed.model      || '';
             streamDisclaimer = parsed.disclaimer  || false;
-            // If done carries a replacement reply (e.g. shield), use it
             if (parsed.outputBlocked && parsed.reply) fullText = parsed.reply;
           }
         } catch {}
       }
     }
 
-    // ── Finalize bubble — wait for word queue to fully drain ──────────────────────────────
-    await new Promise(resolve => {
-      function waitForQueue() {
-        if (wordQueue.length === 0 && !wordTimer) { resolve(); return; }
-        setTimeout(waitForQueue, 40);
-      }
-      waitForQueue();
-    });
-    if (wordTimer) { clearTimeout(wordTimer); wordTimer = null; }
+    // ── Finalize bubble ─────────────────────────────────────────────────────────────────
     streamBody.innerHTML = renderMarkdown(fullText);
 
     streamBody.querySelectorAll('pre').forEach(pre => {
