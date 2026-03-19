@@ -1230,16 +1230,20 @@
         <span class="settings-head-title">Profile</span>
       </header>
 
-      <!-- Profile identity card -->
-      <div class="settings-profile" id="profileViewCard" style="cursor:default; pointer-events:none;">
-        <img class="profile-photo" id="profileViewPhoto" src="" alt="Profile">
-        <div class="profile-info">
-          <div class="profile-name" id="profileViewName"></div>
-          <div class="profile-email" id="profileViewEmail"></div>
-        </div>
-      </div>
-
       <div class="settings-body">
+        <!-- Identity card as first section inside the scrollable body -->
+        <div class="settings-section" style="margin-top:4px;">
+          <div class="settings-group">
+            <div style="display:flex; align-items:center; gap:16px; padding:16px;">
+              <img class="profile-photo" id="profileViewPhoto" src="" alt="Profile" style="flex-shrink:0;">
+              <div class="profile-info">
+                <div class="profile-name" id="profileViewName"></div>
+                <div class="profile-email" id="profileViewEmail"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="settings-section">
           <div class="settings-section-title">Security</div>
           <div class="settings-group">
@@ -1448,7 +1452,6 @@ const profileEmail   = $('profileEmail');
 /* Profile view elements */
 const profileView      = $('profileView');
 const profileBackBtn   = $('profileBackBtn');
-const profileViewCard  = $('profileViewCard');
 const profileViewPhoto = $('profileViewPhoto');
 const profileViewName  = $('profileViewName');
 const profileViewEmail = $('profileViewEmail');
@@ -2058,7 +2061,14 @@ async function sendMessage() {
     }
 
     function enqueueTokenWords(token) {
-      // Split token into word-sized pieces for smooth word-by-word reveal
+      // For short responses, render immediately — no queue animation
+      if (fullText.length < 120 && wordQueue.length === 0) {
+        displayedText += token;
+        streamBody.innerHTML = renderMarkdown(displayedText) + '<span class="stream-cursor"></span>';
+        scrollToBottom();
+        return;
+      }
+      // Long responses: split into word chunks for smooth word-by-word reveal
       const pieces = token.match(/\S+\s*/g) || [token];
       pieces.forEach(p => wordQueue.push(p));
       if (!wordTimer) flushWordQueue();
