@@ -2013,7 +2013,7 @@ async function sendMessage() {
         'Authorization': `Bearer ${await currentUser.getIdToken()}`,
       },
       signal: controller.signal,
-      body: JSON.stringify({ message:text, history })
+      body: JSON.stringify({ message:text, history, isFirstMessage })
     });
 
     clearTimeout(timer);
@@ -2099,6 +2099,14 @@ async function sendMessage() {
             streamDisclaimer = parsed.disclaimer || false;
             if (parsed.outputBlocked && parsed.reply) fullText = parsed.reply;
           }
+          // ── AI-generated title arrives after done ──
+          if (parsed.title) {
+            const aiTitle = parsed.title;
+            updateDoc(convRef, { title: aiTitle }).catch(console.error);
+            if (currentConvId === convRef.id) topbarTitle.textContent = aiTitle;
+            const sidebarItem = historyList.querySelector(`[data-id="${convRef.id}"]`);
+            if (sidebarItem) sidebarItem.textContent = aiTitle;
+          }
         } catch {}
       }
     }
@@ -2151,32 +2159,6 @@ async function sendMessage() {
     await updateDoc(convRef, { messages:arrayUnion(aiMsg), updatedAt:new Date() });
     // Add regenerate button to last AI message
     addRegenButton(streamBody, text);
-
-    // ── AI title generation — fires in background after first reply ──
-    if (isFirstMessage && fullText) {
-      (async () => {
-        try {
-          const titleRes = await fetch('/api/title', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${await currentUser.getIdToken()}`,
-            },
-            body: JSON.stringify({ userMessage: text, aiReply: fullText }),
-          });
-          if (!titleRes.ok) return;
-          const { title } = await titleRes.json();
-          if (!title) return;
-          // Update Firestore, topbar, sidebar — silently, no interruption
-          await updateDoc(convRef, { title });
-          if (currentConvId === convRef.id) topbarTitle.textContent = title;
-          const sidebarItem = historyList.querySelector(`[data-id="${convRef.id}"]`);
-          if (sidebarItem) sidebarItem.textContent = title;
-        } catch (e) {
-          console.warn('[title] Background generation failed:', e.message);
-        }
-      })();
-    }
 
   } catch(err) {
     clearTimeout(timer);
