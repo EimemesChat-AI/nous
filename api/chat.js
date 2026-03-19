@@ -1,7 +1,8 @@
 // api/chat.js
-// v3.1 — Real-time per-token system prompt leak detection via n-gram fingerprinting
+// v3.2 — Title generation via same SSE stream on first message
 // Changelog:
-//   v3.1 — buildFingerprint + createStreamScanner; abort stream mid-flight on leak
+//   v3.2 — If isFirstMessage=true in body, generate title after main reply and emit { title }
+//   v3.1 — Real-time per-token system prompt leak detection via n-gram fingerprinting
 //   v3.0 — shield.js integrated; fastest models first; adaptive max_tokens
 //   v2.5 — Removed dead title logic; title now handled entirely by frontend
 
@@ -132,7 +133,7 @@ export default async function handler(req, res) {
   const GROQ_API_KEY = process.env.GROQ_API_KEY;
   if (!GROQ_API_KEY) return res.status(500).json({ error: "GROQ_API_KEY not configured." });
 
-  const { message, history } = req.body;
+  const { message, history, isFirstMessage } = req.body;
   if (!message) return res.status(400).json({ error: "Message required" });
 
   /* ── INPUT SHIELD ─────────────────────────────────────────────── */
@@ -249,13 +250,49 @@ export default async function handler(req, res) {
 
       if (leaked) return;
 
-      // Normal end — send metadata
+      // Normal end — send main reply metadata
       sseEvent(res, {
         done: true,
         model,
         reply: fullText,
         ...(needsDisclaimer && { disclaimer: true }),
       });
+
+      // ── AI title generation — same SSE connection, first message only ──
+      if (isFirstMessage && fullText) {
+        try {
+          const titleRes = await fetch(GROQ_URL, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${GROQ_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "llama-3.1-8b-instant",
+              max_tokens: 16,
+              temperature: 0.4,
+              messages: [
+                {
+                  role: "system",
+                  content: "Generate an ultra-short chat title. Output ONLY the title, 2-5 words, no punctuation, no quotes, no explanation whatsoever.",
+                },
+                {
+                  role: "user",
+                  content: `User: "${safeMessage.slice(0, 200)}"\nAI: "${fullText.slice(0, 200)}"\n\nTitle:`,
+                },
+              ],
+            }),
+          });
+          if (titleRes.ok) {
+            const titleData = await titleRes.json();
+            const title = titleData.choices?.[0]?.message?.content?.trim().slice(0, 60);
+            if (title) sseEvent(res, { title });
+          }
+        } catch (e) {
+          console.warn("[title] generation failed:", e.message);
+        }
+      }
+
       res.end();
       return;
 
@@ -275,4 +312,4 @@ export default async function handler(req, res) {
   res.end();
 }
 
-    
+
