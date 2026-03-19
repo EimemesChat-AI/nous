@@ -2061,14 +2061,8 @@ async function sendMessage() {
     }
 
     function enqueueTokenWords(token) {
-      // For short responses, render immediately — no queue animation
-      if (fullText.length < 120 && wordQueue.length === 0) {
-        displayedText += token;
-        streamBody.innerHTML = renderMarkdown(displayedText) + '<span class="stream-cursor"></span>';
-        scrollToBottom();
-        return;
-      }
-      // Long responses: split into word chunks for smooth word-by-word reveal
+      // Always word-by-word — typing indicator covers the thinking delay,
+      // this covers the streaming reveal for every response regardless of length
       const pieces = token.match(/\S+\s*/g) || [token];
       pieces.forEach(p => wordQueue.push(p));
       if (!wordTimer) flushWordQueue();
