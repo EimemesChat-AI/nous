@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <!-- index.html
-     v3.2 — Smooth instant token streaming (ChatGPT-style); removed word queue
+     v3.3 — Smooth controlled token render queue (visible streaming like ChatGPT)
      Changelog:
+       v3.3 — Token render queue with 18ms interval; visible smooth streaming
        v3.2 — Replaced word-by-word timer queue with direct RAF token rendering
-       v3.1 — Profile view (logout all devices, delete account); word-by-word
-               streaming; bare typing dots (no bubble); input focus border removed;
-               send button disabled during streaming; profile card navigates to profile page
+       v3.1 — Profile view (logout all devices, delete account); bare typing dots;
+               input focus border removed; send button disabled during streaming
        v3.0 — Full iOS glass UI; same Firebase/API/element IDs; no logic changes
        v2.9 — Privacy, FAQ, About, Terms links all point to real pages
        v2.8 — Confirm dialog redesigned as centered card
@@ -2046,8 +2046,25 @@ async function sendMessage() {
     let fullText         = '';
     let streamModel      = '';
     let streamDisclaimer = false;
-    let rafPending       = false;
     let buf              = '';
+
+    // Smooth render queue — tokens arrive fast, we pace display at 18ms each
+    let renderQueue  = [];
+    let displayed    = '';
+    let renderTimer  = null;
+
+    function pumpRenderQueue() {
+      if (renderQueue.length === 0) { renderTimer = null; return; }
+      displayed += renderQueue.shift();
+      streamBody.innerHTML = renderMarkdown(displayed) + '<span class="stream-cursor"></span>';
+      scrollToBottom();
+      renderTimer = setTimeout(pumpRenderQueue, 18);
+    }
+
+    function enqueue(token) {
+      renderQueue.push(token);
+      if (!renderTimer) pumpRenderQueue();
+    }
 
     const reader  = res.body.getReader();
     const decoder = new TextDecoder();
@@ -2065,31 +2082,35 @@ async function sendMessage() {
         const raw = line.slice(6).trim();
         try {
           const parsed = JSON.parse(raw);
-          if (parsed.error) { fullText = parsed.error; }
+          if (parsed.error) { enqueue(parsed.error); }
           if (parsed.token) {
             fullText += parsed.token;
-            if (!rafPending) {
-              rafPending = true;
-              requestAnimationFrame(() => {
-                streamBody.innerHTML = renderMarkdown(fullText) + '<span class="stream-cursor"></span>';
-                scrollToBottom();
-                rafPending = false;
-              });
-            }
+            enqueue(parsed.token);
           }
           if (parsed.outputBlocked && parsed.safeReply) {
             fullText = parsed.safeReply;
+            renderQueue = [];
+            displayed = fullText;
             streamBody.innerHTML = renderMarkdown(fullText) + '<span class="stream-cursor"></span>';
             scrollToBottom();
           }
           if (parsed.done) {
-            streamModel      = parsed.model      || '';
-            streamDisclaimer = parsed.disclaimer  || false;
+            streamModel      = parsed.model     || '';
+            streamDisclaimer = parsed.disclaimer || false;
             if (parsed.outputBlocked && parsed.reply) fullText = parsed.reply;
           }
         } catch {}
       }
     }
+
+    // Drain remaining queue before finalizing
+    await new Promise(resolve => {
+      function drain() {
+        if (renderQueue.length === 0 && !renderTimer) { resolve(); return; }
+        setTimeout(drain, 25);
+      }
+      drain();
+    });
 
     // ── Finalize bubble ─────────────────────────────────────────────────────────────────
     streamBody.innerHTML = renderMarkdown(fullText);
