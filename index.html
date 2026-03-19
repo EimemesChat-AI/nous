@@ -1244,19 +1244,6 @@
 
       <div class="settings-body">
 
-        <!-- Identity -->
-        <div class="settings-section">
-          <div class="settings-group">
-            <div class="settings-row" style="cursor:default;">
-              <img class="profile-photo" id="profileViewPhoto" src="" alt="Profile" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid var(--accent);flex-shrink:0;">
-              <div class="settings-row-text">
-                <div class="settings-row-label" id="profileViewName"></div>
-                <div class="settings-row-desc"  id="profileViewEmail"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <!-- Security -->
         <div class="settings-section">
           <div class="settings-section-title">Security</div>
@@ -1469,9 +1456,6 @@ const profileEmail   = $('profileEmail');
 /* Profile view elements */
 const profileView      = $('profileView');
 const profileBackBtn   = $('profileBackBtn');
-const profileViewPhoto = $('profileViewPhoto');
-const profileViewName  = $('profileViewName');
-const profileViewEmail = $('profileViewEmail');
 const logoutAllRow     = $('logoutAllRow');
 const deleteAccountRow = $('deleteAccountRow');
 
@@ -2294,10 +2278,6 @@ aboutRow.addEventListener('click',    () => window.open('https://app-eimemeschat
 
 profileCard.addEventListener('click', () => {
   if (!currentUser) return;
-  const fallbackAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 24 24' fill='%23999'%3E%3Ccircle cx='12' cy='8' r='4' /%3E%3Cpath d='M12 14c-4.42 0-8 2.69-8 6h16c0-3.31-3.58-6-8-6z' /%3E%3C/svg%3E";
-  profileViewPhoto.src         = currentUser.photoURL || fallbackAvatar;
-  profileViewName.textContent  = currentUser.displayName || 'User';
-  profileViewEmail.textContent = currentUser.email || '';
   showView(profileView);
 });
 
