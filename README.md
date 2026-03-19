@@ -1,225 +1,77 @@
+EimemesChat AI
 
+A chat application powered by GROQ LLM with real-time streaming responses.
 
-📖 About
+Features
 
-EimemesChat AI is an independent AI-powered conversational platform built with a focus on cultural representation. The application addresses users as "Melhoi" (a term of endearment meaning beautiful/handsome) and is developed with the long-term objective of supporting indigenous languages, including Kuki.
+· Real-time streaming - Tokens appear as they're generated
+· Multiple LLM models with automatic fallback if one fails
+· Conversation history - Auto-saved with AI-generated titles
+· Code syntax highlighting with one-click copy
+· Math rendering via KaTeX (LaTeX support)
+· Dark/light theme with system preference sync
+· Mobile responsive with touch-optimized UI
 
-Mission: Preserving language is preserving identity.
+Tech Stack
 
----
+· Frontend: Vanilla JS, Firebase SDK (auth + Firestore)
+· Backend: Vercel serverless functions
+· LLM: GROQ API (llama-3.1-8b, llama3-8b, etc.)
+· Streaming: Server-Sent Events (SSE)
 
-🚀 Features
+Setup
 
-· AI-powered chat interface
-· Google authentication
-· Persistent chat history per user
-· Dark/light mode support
-· Rate limiting (30 messages per day)
-· Conversation deletion
-· Responsive design (mobile and desktop)
-· Code block copy support
-· Markdown rendering
+1. Clone the repo
+2. Install dependencies: npm install
+3. Add environment variables:
+   ```
+   GROQ_API_KEY=your_key
+   FIREBASE_PROJECT_ID=your_project
+   FIREBASE_CLIENT_EMAIL=your_email
+   FIREBASE_PRIVATE_KEY="your_key"
+   ```
+4. Update Firebase config in index.html with your project details
+5. Run: vercel dev
 
----
+Environment Variables
 
-🧱 Tech Stack
+Variable Description
+GROQ_API_KEY API key from groq.com
+FIREBASE_PROJECT_ID Firebase project ID
+FIREBASE_CLIENT_EMAIL Firebase service account email
+FIREBASE_PRIVATE_KEY Firebase private key
 
-Layer Technology
-Frontend HTML, CSS, JavaScript
-Backend Node.js (serverless via Vercel)
-AI Providers Groq / HuggingFace / OpenRouter
-Authentication Firebase Auth (Google)
-Database Firestore
-Hosting Vercel (main app) + GitHub Pages (legal pages)
-Version Control Git / GitHub
+API Endpoint
 
----
+POST /api/chat
 
-📁 Repository Structure
+Request body:
 
-```
-eimemeschat/
-├── index.html                 # Main application
-├── api/
-│   └── chat.js                # Serverless AI endpoint
-├── .env                       # Environment variables
-├── .gitignore
-├── package.json
-├── vercel.json
-└── README.md
-```
-
-Legal pages are maintained in a separate repository:
-🔗 eimemeschat-legal
-
----
-
-⚙️ Setup Instructions
-
-1. Clone the repository
-
-```bash
-git clone https://github.com/yourusername/eimemeschat.git
-cd eimemeschat
-```
-
-2. Install dependencies
-
-```bash
-npm install
-```
-
-3. Set up environment variables
-
-Create a .env file:
-
-```env
-HF_TOKEN=your_huggingface_token
-GROQ_API_KEY=your_groq_api_key
-OPENROUTER_KEY=your_openrouter_key
-```
-
-4. Configure Firebase
-
-· Create a Firebase project
-· Enable Google Authentication
-· Set up Firestore
-· Update Firebase config in index.html
-
-5. Run locally
-
-```bash
-vercel dev
-```
-
-6. Deploy to production
-
-```bash
-vercel --prod
-```
-
----
-
-🔐 Firestore Security Rules
-
-rules_version = '2';
-
-service cloud.firestore {
-  match /databases/{database}/documents {
-
-    function isAuth() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return isAuth() && request.auth.uid == userId;
-    }
-
-    function isValidConversation() {
-      let data = request.resource.data;
-      return data.keys().hasAll(['title', 'createdAt', 'updatedAt', 'messages'])
-        && data.title is string
-        && data.title.size() <= 200
-        && data.messages is list
-        && data.messages.size() <= 100;
-    }
-
-    function isMetaUpdate() {
-      let affected = request.resource.data.diff(resource.data).affectedKeys();
-      return affected.hasOnly(['title', 'updatedAt']);
-    }
-
-    function isMessagesUpdate() {
-      let affected = request.resource.data.diff(resource.data).affectedKeys();
-      return affected.hasOnly(['messages', 'updatedAt'])
-          || affected.hasOnly(['messages', 'updatedAt', 'title']);
-    }
-
-    match /users/{userId} {
-      allow read:   if isOwner(userId);
-      allow create: if isOwner(userId)
-                    && request.resource.data.keys().hasOnly(['email', 'displayName', 'photoURL', 'createdAt']);
-      allow update: if isOwner(userId)
-                    && request.resource.data.keys().hasOnly(['email', 'displayName', 'photoURL', 'updatedAt']);
-      allow delete: if isOwner(userId);
-
-      match /conversations/{convId} {
-        allow get:  if isOwner(userId);
-        allow list: if isOwner(userId);
-        
-        allow create: if isOwner(userId)
-                      && isValidConversation()
-                      && request.resource.data.messages.size() == 0;
-        
-        allow update: if isOwner(userId)
-                      && (isMessagesUpdate() || isMetaUpdate())
-                      // Only validate title if it's being updated
-                      && (!('title' in request.resource.data) || request.resource.data.title.size() <= 200)
-                      // Only validate messages if they're being updated
-                      && (!('messages' in request.resource.data) || request.resource.data.messages.size() <= 100);
-        
-        allow delete: if isOwner(userId);
-      }
-    }
-
-    // Deny all other paths
-    match /{document=**} {
-      allow read, write: if false;
-    }
-  }
+```json
+{
+  "message": "user question",
+  "history": [{ "role": "user", "content": "..." }],
+  "isFirstMessage": true/false
 }
+```
 
-🌐 Live Links
+Response: Server-Sent Events stream with tokens
 
-Service URL
-Main app https://eimemeschat-ai-ashy.vercel.app/
-Legal Hub https://legal.eimemeschat.com
+Models (in order)
 
----
+1. llama-3.1-8b-instant (fastest)
+2. llama3-8b-8192
+3. llama-3.3-70b-versatile
+4. gemma2-9b-it
 
-📄 Legal Pages
+Security
 
-· About Us
-· Privacy Policy
-· Terms of Use
-· FAQ & Support
+· Firebase Auth for user management
+· Daily message limit: 150 per user
+· Input sanitization
+· System prompt leak detection
+· User-scoped Firestore paths
 
----
+License
 
-💰 Operational Costs
-
-The project is independently maintained. Ongoing costs include:
-
-· API usage (per message)
-· Domain and hosting
-· Development and research toward Kuki language support
-
-The service remains free for all users.
-
----
-
-🛣️ Roadmap
-
-Version Focus
-v1.x Core chat experience, stability, community building
-v2.0 Research and development toward Kuki language support
-v3.0 Full conversational Kuki capabilities
-
----
-
-📬 Contact
-
-· Email: eimemeschatai@gmail.com
-· Support: FAQ & Contact Form
-
----
-
-🧾 License
-
-© 2026 EimemesChat AI. All rights reserved.
-
----
-
-🏔️ Motto
-
-"Preserving language is preserving identity."
+MIT © Michael Kilong
