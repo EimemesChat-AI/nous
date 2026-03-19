@@ -539,26 +539,18 @@
     /* ═══════════════════════════════════════════
        TYPING INDICATOR
     ═══════════════════════════════════════════ */
-    .typing-row  { display:flex; align-items:flex-start; gap:12px; padding:8px 0; }
-    .typing-dots {
-      display:flex; gap:5px;
-      padding:10px 14px;
-      background:var(--glass-2);
-      backdrop-filter: blur(15px);
-      -webkit-backdrop-filter: blur(15px);
-      border:1px solid var(--border-b);
-      border-radius:22px;
-      width:fit-content;
+    .typing-row { display:flex; align-items:center; padding:6px 0 10px; }
+    .typing-text {
+      font-size: 15px;
+      color: var(--text-3);
+      font-style: italic;
+      letter-spacing: 0.02em;
+      animation: typing-pulse 1.4s ease-in-out infinite;
     }
-    .typing-dot {
-      width:6px; height:6px;
-      background:var(--text-3);
-      border-radius:50%;
-      animation:tdot 1.3s infinite ease-in-out;
+    @keyframes typing-pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.2; }
     }
-    .typing-dot:nth-child(2) { animation-delay:.18s; }
-    .typing-dot:nth-child(3) { animation-delay:.36s; }
-    @keyframes tdot { 0%,60%,100% { transform:translateY(0); } 30% { transform:translateY(-5px); } }
 
     /* ═══════════════════════════════════════════
        INPUT AREA — static, in normal flex flow
@@ -580,9 +572,7 @@
       box-shadow: var(--sh-input);
       transition: border-color 0.2s;
     }
-    .input-inner:focus-within {
-      border-color: rgba(10,132,255,0.35);
-    }
+    /* Focus border intentionally removed for cleaner look */
     .input-box {
       width:100%; background:transparent;
       border:none; border-radius:0;
@@ -684,6 +674,7 @@
       backdrop-filter: blur(20px) saturate(180%);
       -webkit-backdrop-filter: blur(20px) saturate(180%);
       border-bottom:1px solid var(--border-b); flex-shrink:0;
+      position: sticky; top: 0; z-index: 5;
     }
     .settings-head-title {
       font-family:'Bricolage Grotesque',sans-serif;
@@ -694,7 +685,7 @@
     .settings-profile {
       display: flex;
       margin: 16px 20px;
-      padding: 16px;
+      padding: 14px 16px;
       background: var(--glass-2);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
@@ -703,7 +694,13 @@
       align-items: center;
       gap: 16px;
       box-shadow: var(--sh-sm);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      flex-shrink: 0;
     }
+    .settings-profile:hover { background: var(--glass-1); border-color: var(--accent); }
+    .settings-profile-chevron { color: var(--text-3); flex-shrink: 0; }
+    .settings-profile-chevron svg { width: 14px; height: 14px; }
     .profile-photo {
       width: 52px; height: 52px;
       border-radius: 50%;
@@ -944,6 +941,65 @@
     .signout-cancel:hover { background: var(--glass-2); }
 
     /* ═══════════════════════════════════════════
+       DELETE ACCOUNT MODAL
+    ═══════════════════════════════════════════ */
+    .deleteacct-overlay {
+      display: none;
+      position: fixed; inset: 0; z-index: 300;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .deleteacct-overlay.show { display: flex; }
+    .deleteacct-card {
+      background: var(--glass-1);
+      backdrop-filter: blur(30px) saturate(180%);
+      -webkit-backdrop-filter: blur(30px) saturate(180%);
+      border: 1px solid rgba(255,75,75,0.22);
+      border-radius: 28px;
+      padding: 32px 28px 24px;
+      max-width: 340px; width: 100%;
+      text-align: center;
+      box-shadow: var(--sh-md);
+      animation: modalPop 0.22s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .deleteacct-icon {
+      width: 52px; height: 52px; border-radius: 16px;
+      background: rgba(255,75,75,0.12);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 16px;
+      border: 1px solid rgba(255,75,75,0.2);
+    }
+    .deleteacct-icon svg { width: 24px; height: 24px; stroke: #ff6b6b; }
+    .deleteacct-title { font-family:'Bricolage Grotesque',sans-serif; font-size:20px; font-weight:700; color:var(--text-1); margin-bottom:8px; }
+    .deleteacct-desc { font-size:13.5px; color:var(--text-3); line-height:1.55; margin-bottom:20px; }
+    .deleteacct-warning {
+      font-size: 12.5px; color: #ff6b6b;
+      background: rgba(255,75,75,0.08);
+      border: 1px solid rgba(255,75,75,0.15);
+      border-radius: 12px; padding: 10px 14px;
+      margin-bottom: 20px; text-align: left; line-height: 1.5;
+    }
+    .deleteacct-confirm {
+      width:100%; padding:14px; border-radius:40px; border:none;
+      background: linear-gradient(145deg,#ff4f4f,#cc2c2c); color:white;
+      font-size:15px; font-weight:600; cursor:pointer; margin-bottom:10px;
+      transition:opacity 0.15s; font-family:inherit;
+      box-shadow: 0 4px 14px rgba(255,50,50,0.28);
+    }
+    .deleteacct-confirm:hover { opacity:.86; }
+    .deleteacct-confirm:disabled { opacity:.4; cursor:not-allowed; }
+    .deleteacct-cancel {
+      width:100%; padding:14px; border-radius:40px;
+      border:1px solid var(--border); background:var(--glass-3);
+      color:var(--text-2); font-size:15px; font-weight:500;
+      cursor:pointer; transition:background 0.15s; font-family:inherit;
+    }
+    .deleteacct-cancel:hover { background:var(--glass-2); }
+
+    /* ═══════════════════════════════════════════
        MOBILE (≤ 768px)
     ═══════════════════════════════════════════ */
     @media (max-width: 768px) {
@@ -1084,12 +1140,15 @@
         <span class="settings-head-title">Settings</span>
       </header>
 
-      <!-- Profile card (hidden until logged in) -->
-      <div class="settings-profile" id="profileCard" style="display: none;">
+      <!-- Profile card (hidden until logged in) — click to open Profile page -->
+      <div class="settings-profile" id="profileCard" style="display: none;" role="button" tabindex="0" aria-label="View profile">
         <img class="profile-photo" id="profilePhoto" src="" alt="Profile">
         <div class="profile-info">
           <div class="profile-name" id="profileName"></div>
           <div class="profile-email" id="profileEmail"></div>
+        </div>
+        <div class="settings-profile-chevron">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
         </div>
       </div>
 
@@ -1162,7 +1221,58 @@
       </div>
     </div>
 
-  </div><!-- /main -->
+    <!-- PROFILE VIEW -->
+    <div class="view" id="profileView">
+      <header class="settings-head">
+        <button class="icon-btn" id="profileBackBtn" aria-label="Back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <span class="settings-head-title">Profile</span>
+      </header>
+
+      <!-- Profile identity card -->
+      <div class="settings-profile" id="profileViewCard" style="cursor:default; pointer-events:none;">
+        <img class="profile-photo" id="profileViewPhoto" src="" alt="Profile">
+        <div class="profile-info">
+          <div class="profile-name" id="profileViewName"></div>
+          <div class="profile-email" id="profileViewEmail"></div>
+        </div>
+      </div>
+
+      <div class="settings-body">
+        <div class="settings-section">
+          <div class="settings-section-title">Security</div>
+          <div class="settings-group">
+            <div class="settings-row" id="logoutAllRow">
+              <div class="settings-row-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
+              </div>
+              <div class="settings-row-text">
+                <div class="settings-row-label">Logout all devices</div>
+                <div class="settings-row-desc">Sign out from all active sessions</div>
+              </div>
+              <div class="settings-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+            </div>
+          </div>
+        </div>
+        <div class="settings-section">
+          <div class="settings-section-title">Danger Zone</div>
+          <div class="settings-group">
+            <div class="settings-row" id="deleteAccountRow">
+              <div class="settings-row-icon red">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+              </div>
+              <div class="settings-row-text">
+                <div class="settings-row-label red">Delete Account</div>
+                <div class="settings-row-desc">Permanently delete your account and all data</div>
+              </div>
+              <div class="settings-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+            </div>
+          </div>
+        </div>
+        <div class="settings-footer">EimemesChat AI · 2026</div>
+      </div>
+    </div>
 </div><!-- /app -->
 
 <!-- LOGIN MODAL -->
@@ -1236,9 +1346,23 @@
   </div>
 </div>
 
+<!-- Delete account modal -->
+<div class="deleteacct-overlay" id="deleteAcctOverlay">
+  <div class="deleteacct-card">
+    <div class="deleteacct-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+    </div>
+    <h3 class="deleteacct-title">Delete account?</h3>
+    <p class="deleteacct-desc">This action is permanent and cannot be undone. All your conversations and data will be erased forever.</p>
+    <div class="deleteacct-warning">⚠️ You will be immediately signed out and your account will be deleted. This cannot be reversed.</div>
+    <button class="deleteacct-confirm" id="deleteAcctConfirmBtn">Yes, delete my account</button>
+    <button class="deleteacct-cancel" id="deleteAcctCancelBtn">Cancel</button>
+  </div>
+</div>
+
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence, deleteUser } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 import { getFirestore, collection, query, orderBy, limit, onSnapshot, addDoc, updateDoc, doc, getDoc, getDocs, writeBatch, arrayUnion, setDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 /* ── Firebase config (replace with your own) ─────────────────── */
@@ -1320,6 +1444,16 @@ const profileCard    = $('profileCard');
 const profilePhoto   = $('profilePhoto');
 const profileName    = $('profileName');
 const profileEmail   = $('profileEmail');
+
+/* Profile view elements */
+const profileView      = $('profileView');
+const profileBackBtn   = $('profileBackBtn');
+const profileViewCard  = $('profileViewCard');
+const profileViewPhoto = $('profileViewPhoto');
+const profileViewName  = $('profileViewName');
+const profileViewEmail = $('profileViewEmail');
+const logoutAllRow     = $('logoutAllRow');
+const deleteAccountRow = $('deleteAccountRow');
 
 /* ── Utilities ────────────────────────────────────────────────── */
 
@@ -1471,7 +1605,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
 /* ── Views ────────────────────────────────────────────────────── */
 
 function showView(el) {
-  [chatView, settingsView].forEach(v => v.classList.remove('active'));
+  [chatView, settingsView, profileView].forEach(v => v.classList.remove('active'));
   el.classList.add('active');
 }
 settingsBtn.addEventListener('click', () => { closeSidebar(); showView(settingsView); });
@@ -1612,7 +1746,7 @@ function showTyping() {
   removeTyping();
   const row = document.createElement('div');
   row.className = 'typing-row'; row.id = 'typingIndicator';
-  row.innerHTML = `<div class="typing-dots"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`;
+  row.innerHTML = `<span class="typing-text">typing....</span>`;
   messagesInner.appendChild(row);
   scrollToBottom();
 }
@@ -1910,6 +2044,26 @@ async function sendMessage() {
     let rafPending  = false;
     let buf         = '';
 
+    // Word-by-word display queue
+    let wordQueue   = [];
+    let displayedText = '';
+    let wordTimer   = null;
+
+    function flushWordQueue() {
+      if (wordQueue.length === 0) { wordTimer = null; return; }
+      displayedText += wordQueue.shift();
+      streamBody.innerHTML = renderMarkdown(displayedText) + '<span class="stream-cursor"></span>';
+      scrollToBottom();
+      wordTimer = setTimeout(flushWordQueue, 28);
+    }
+
+    function enqueueTokenWords(token) {
+      // Split token into word-sized pieces for smooth word-by-word reveal
+      const pieces = token.match(/\S+\s*/g) || [token];
+      pieces.forEach(p => wordQueue.push(p));
+      if (!wordTimer) flushWordQueue();
+    }
+
     const reader  = res.body.getReader();
     const decoder = new TextDecoder();
 
@@ -1929,14 +2083,7 @@ async function sendMessage() {
           if (parsed.error) { fullText = parsed.error; }
           if (parsed.token) {
             fullText += parsed.token;
-            if (!rafPending) {
-              rafPending = true;
-              requestAnimationFrame(() => {
-                streamBody.innerHTML = renderMarkdown(fullText) + '<span class="stream-cursor"></span>';
-                scrollToBottom();
-                rafPending = false;
-              });
-            }
+            enqueueTokenWords(parsed.token);
           }
           // Output shield: backend replaced streamed content with safe reply
           if (parsed.outputBlocked && parsed.safeReply) {
@@ -1954,7 +2101,15 @@ async function sendMessage() {
       }
     }
 
-    // ── Finalize bubble ─────────────────────────────────────────────────────────────────
+    // ── Finalize bubble — wait for word queue to fully drain ──────────────────────────────
+    await new Promise(resolve => {
+      function waitForQueue() {
+        if (wordQueue.length === 0 && !wordTimer) { resolve(); return; }
+        setTimeout(waitForQueue, 40);
+      }
+      waitForQueue();
+    });
+    if (wordTimer) { clearTimeout(wordTimer); wordTimer = null; }
     streamBody.innerHTML = renderMarkdown(fullText);
 
     streamBody.querySelectorAll('pre').forEach(pre => {
@@ -2029,7 +2184,8 @@ function autoResize() {
   messageInput.style.height = Math.min(messageInput.scrollHeight, 200) + 'px';
 }
 function updateSendBtn() {
-  sendBtn.disabled = messageInput.value.trim().length === 0 || isSending;
+  const hasText = messageInput.value.trim().length > 0;
+  sendBtn.disabled = !hasText || isSending || isStreaming;
   stopBtn.classList.toggle('visible', isStreaming);
   sendBtn.style.display = isStreaming ? 'none' : 'flex';
 }
@@ -2112,6 +2268,89 @@ signoutConfirmBtn.addEventListener('click', () => {
 privacyRow.addEventListener('click',  () => window.open('https://app-eimemeschat.vercel.app/privacy.html','_blank'));
 helpRow.addEventListener('click',     () => window.open('https://app-eimemeschat.vercel.app/support.html','_blank'));
 aboutRow.addEventListener('click',    () => window.open('https://app-eimemeschat.vercel.app/about.html','_blank'));
+
+/* ── Profile view navigation ──────────────────────────────────── */
+
+profileCard.addEventListener('click', () => {
+  if (!currentUser) return;
+  const fallbackAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 24 24' fill='%23999'%3E%3Ccircle cx='12' cy='8' r='4' /%3E%3Cpath d='M12 14c-4.42 0-8 2.69-8 6h16c0-3.31-3.58-6-8-6z' /%3E%3C/svg%3E";
+  profileViewPhoto.src         = currentUser.photoURL || fallbackAvatar;
+  profileViewName.textContent  = currentUser.displayName || 'User';
+  profileViewEmail.textContent = currentUser.email || '';
+  showView(profileView);
+});
+
+profileBackBtn.addEventListener('click', () => showView(settingsView));
+
+/* ── Logout all devices ───────────────────────────────────────── */
+
+logoutAllRow.addEventListener('click', async () => {
+  if (!currentUser) return;
+  const yes = await showConfirm(
+    'All active sessions will be signed out. You will need to sign back in.',
+    'Logout all',
+    'Logout all devices?'
+  );
+  if (!yes) return;
+  try {
+    // Write a revokedAt timestamp so other sessions detect forced logout on next load
+    await setDoc(doc(db, 'users', currentUser.uid), { revokedAt: new Date().toISOString() }, { merge: true });
+    showToast('Signing out from all devices…');
+    setTimeout(() => signOut(auth).catch(console.error), 1400);
+  } catch(err) {
+    console.error('Logout all devices:', err);
+    showToast('Something went wrong. Please try again.');
+  }
+});
+
+/* ── Delete account ───────────────────────────────────────────── */
+
+const deleteAcctOverlay    = $('deleteAcctOverlay');
+const deleteAcctConfirmBtn = $('deleteAcctConfirmBtn');
+const deleteAcctCancelBtn  = $('deleteAcctCancelBtn');
+
+deleteAccountRow.addEventListener('click', () => {
+  deleteAcctOverlay.classList.add('show');
+});
+
+deleteAcctCancelBtn.addEventListener('click', () => {
+  deleteAcctOverlay.classList.remove('show');
+});
+
+deleteAcctConfirmBtn.addEventListener('click', async () => {
+  if (!currentUser) return;
+  deleteAcctConfirmBtn.disabled = true;
+  deleteAcctConfirmBtn.textContent = 'Deleting…';
+  try {
+    // 1. Unsub listeners before deletion
+    if (unsubConvs) { unsubConvs(); unsubConvs = null; }
+    if (unsubMsgs)  { unsubMsgs();  unsubMsgs  = null; }
+
+    // 2. Delete all conversations in Firestore
+    const convsSnap = await getDocs(getUserConvsRef());
+    const batch = writeBatch(db);
+    convsSnap.docs.forEach(d => batch.delete(d.ref));
+    // 3. Delete user meta doc
+    batch.delete(doc(db, 'users', currentUser.uid));
+    await batch.commit();
+
+    // 4. Delete Firebase Auth account
+    await deleteUser(currentUser);
+
+    deleteAcctOverlay.classList.remove('show');
+    showToast('Account deleted. Goodbye 👋');
+  } catch(err) {
+    console.error('Delete account:', err);
+    deleteAcctConfirmBtn.disabled = false;
+    deleteAcctConfirmBtn.textContent = 'Yes, delete my account';
+    deleteAcctOverlay.classList.remove('show');
+    if (err.code === 'auth/requires-recent-login') {
+      showToast('Please sign out and sign back in first, then try again.');
+    } else {
+      showToast('Deletion failed. Please try again.');
+    }
+  }
+});
 
 /* ── Login modal ──────────────────────────────────────────────── */
 
