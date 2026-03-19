@@ -158,7 +158,7 @@ data: {"done": true, "model": "llama-3.1-8b-instant"}
 <h2>Links</h2>
 
 <ul>
-  <li><a href="https://app-eimemeschat.vercel.app">Live Demo</a></li>
+  <li><a href=" https://eimemeschat-ai-ashy.vercel.app">Live Demo</a></li>
   <li><a href="https://app-eimemeschat.vercel.app/support.html">Support</a></li>
   <li><a href="https://app-eimemeschat.vercel.app/privacy.html">Privacy Policy</a></li>
   <li><a href="https://app-eimemeschat.vercel.app/terms.html">Terms of Service</a></li>
