@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <!-- index.html
-     v3.3 — Smooth controlled token render queue (visible streaming like ChatGPT)
+     v3.4 — AI-generated chat titles via /api/title after first reply
      Changelog:
+       v3.4 — Background AI title generation after first AI reply completes
        v3.3 — Token render queue with 18ms interval; visible smooth streaming
        v3.2 — Replaced word-by-word timer queue with direct RAF token rendering
        v3.1 — Profile view (logout all devices, delete account); bare typing dots;
@@ -1967,17 +1968,16 @@ async function sendMessage() {
     isSending = false; updateSendBtn(); return;
   }
 
-  // Check isFirstMessage BEFORE saving user msg — once user msg is saved, history.length > 0
+  // Check isFirstMessage BEFORE saving user msg
   const isFirstMessage = !conv?.messages?.length;
 
-  // Set title immediately from user input on first message — reliable, no SSE needed
+  // Set a temporary title immediately from user input so sidebar isn't blank
   if (isFirstMessage) {
-    const autoTitle = text.slice(0, 50) + (text.length > 50 ? '…' : '');
-    updateDoc(convRef, { title: autoTitle }).catch(console.error);
-    // Update UI instantly — don't wait for onSnapshot
-    topbarTitle.textContent = autoTitle;
+    const tempTitle = text.slice(0, 50) + (text.length > 50 ? '…' : '');
+    updateDoc(convRef, { title: tempTitle }).catch(console.error);
+    topbarTitle.textContent = tempTitle;
     const sidebarItem = historyList.querySelector(`[data-id="${currentConvId}"]`);
-    if (sidebarItem) sidebarItem.textContent = autoTitle;
+    if (sidebarItem) sidebarItem.textContent = tempTitle;
   }
 
   // Save user message to Firestore
@@ -2151,6 +2151,32 @@ async function sendMessage() {
     await updateDoc(convRef, { messages:arrayUnion(aiMsg), updatedAt:new Date() });
     // Add regenerate button to last AI message
     addRegenButton(streamBody, text);
+
+    // ── AI title generation — fires in background after first reply ──
+    if (isFirstMessage && fullText) {
+      (async () => {
+        try {
+          const titleRes = await fetch('/api/title', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${await currentUser.getIdToken()}`,
+            },
+            body: JSON.stringify({ userMessage: text, aiReply: fullText }),
+          });
+          if (!titleRes.ok) return;
+          const { title } = await titleRes.json();
+          if (!title) return;
+          // Update Firestore, topbar, sidebar — silently, no interruption
+          await updateDoc(convRef, { title });
+          if (currentConvId === convRef.id) topbarTitle.textContent = title;
+          const sidebarItem = historyList.querySelector(`[data-id="${convRef.id}"]`);
+          if (sidebarItem) sidebarItem.textContent = title;
+        } catch (e) {
+          console.warn('[title] Background generation failed:', e.message);
+        }
+      })();
+    }
 
   } catch(err) {
     clearTimeout(timer);
