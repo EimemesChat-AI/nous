@@ -1141,19 +1141,24 @@
         <span class="settings-head-title">Settings</span>
       </header>
 
-      <!-- Profile card (hidden until logged in) — click to open Profile page -->
-      <div class="settings-profile" id="profileCard" style="display: none;" role="button" tabindex="0" aria-label="View profile">
-        <img class="profile-photo" id="profilePhoto" src="" alt="Profile">
-        <div class="profile-info">
-          <div class="profile-name" id="profileName"></div>
-          <div class="profile-email" id="profileEmail"></div>
-        </div>
-        <div class="settings-profile-chevron">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-        </div>
-      </div>
-
       <div class="settings-body">
+
+        <!-- Profile — same section/group/row as everything else -->
+        <div class="settings-section" id="profileCard" style="display:none;">
+          <div class="settings-section-title">Profile</div>
+          <div class="settings-group">
+            <div class="settings-row" id="profileCardRow" style="cursor:pointer;">
+              <img class="profile-photo" id="profilePhoto" src="" alt="Profile" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid var(--accent);flex-shrink:0;">
+              <div class="settings-row-text">
+                <div class="settings-row-label" id="profileName"></div>
+                <div class="settings-row-desc"  id="profileEmail"></div>
+              </div>
+              <div class="settings-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Account -->
         <div class="settings-section">
           <div class="settings-section-title">Account</div>
           <div class="settings-group">
@@ -1169,6 +1174,8 @@
             </div>
           </div>
         </div>
+
+        <!-- Data -->
         <div class="settings-section">
           <div class="settings-section-title">Data</div>
           <div class="settings-group">
@@ -1184,6 +1191,8 @@
             </div>
           </div>
         </div>
+
+        <!-- Appearance -->
         <div class="settings-section">
           <div class="settings-section-title">Appearance</div>
           <div class="settings-group">
@@ -1198,6 +1207,8 @@
             </div>
           </div>
         </div>
+
+        <!-- Info -->
         <div class="settings-section">
           <div class="settings-section-title">Info</div>
           <div class="settings-group">
@@ -1213,16 +1224,17 @@
             </div>
             <div class="settings-row" id="aboutRow">
               <div class="settings-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
-              <div class="settings-row-text"><div class="settings-row-label">About</div><div class="settings-row-desc">EimemesChat AI · v3.0</div></div>
+              <div class="settings-row-text"><div class="settings-row-label">About</div><div class="settings-row-desc">EimemesChat AI · v3.1</div></div>
               <div class="settings-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
             </div>
           </div>
         </div>
+
         <div class="settings-footer">EimemesChat AI · 2026</div>
       </div>
     </div>
 
-    <!-- PROFILE VIEW -->
+    <!-- PROFILE VIEW — identical structure to Settings, all rows pixel-matched -->
     <div class="view" id="profileView">
       <header class="settings-head">
         <button class="icon-btn" id="profileBackBtn" aria-label="Back">
@@ -1232,19 +1244,22 @@
       </header>
 
       <div class="settings-body">
-        <!-- Identity card as first section inside the scrollable body -->
-        <div class="settings-section" style="margin-top:4px;">
+
+        <!-- Identity — same settings-group/row structure, same sizing as all other rows -->
+        <div class="settings-section">
+          <div class="settings-section-title">Account</div>
           <div class="settings-group">
-            <div style="display:flex; align-items:center; gap:16px; padding:16px;">
-              <img class="profile-photo" id="profileViewPhoto" src="" alt="Profile" style="flex-shrink:0;">
-              <div class="profile-info">
-                <div class="profile-name" id="profileViewName"></div>
-                <div class="profile-email" id="profileViewEmail"></div>
+            <div class="settings-row" style="cursor:default;">
+              <img class="profile-photo" id="profileViewPhoto" src="" alt="Profile" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid var(--accent);flex-shrink:0;">
+              <div class="settings-row-text">
+                <div class="settings-row-label" id="profileViewName"></div>
+                <div class="settings-row-desc"  id="profileViewEmail"></div>
               </div>
             </div>
           </div>
         </div>
 
+        <!-- Security -->
         <div class="settings-section">
           <div class="settings-section-title">Security</div>
           <div class="settings-group">
@@ -1260,6 +1275,8 @@
             </div>
           </div>
         </div>
+
+        <!-- Danger Zone -->
         <div class="settings-section">
           <div class="settings-section-title">Danger Zone</div>
           <div class="settings-group">
@@ -1275,6 +1292,7 @@
             </div>
           </div>
         </div>
+
         <div class="settings-footer">EimemesChat AI · 2026</div>
       </div>
     </div>
@@ -2441,7 +2459,7 @@ onAuthStateChanged(auth, user => {
     profilePhoto.src = user.photoURL || 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'56\' height=\'56\' viewBox=\'0 0 24 24\' fill=\'%23999\'%3E%3Ccircle cx=\'12\' cy=\'8\' r=\'4\' /%3E%3Cpath d=\'M12 14c-4.42 0-8 2.69-8 6h16c0-3.31-3.58-6-8-6z\' /%3E%3C/svg%3E';
     profileName.textContent = user.displayName || 'User';
     profileEmail.textContent = user.email || '';
-    profileCard.style.display = 'flex';
+    profileCard.style.display = 'block';
 
     emailInput.value = ''; passwordInput.value = '';
     agreeCheckbox.checked = false; setAuthButtons(false); clearAuthError();
